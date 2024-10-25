@@ -1,0 +1,163 @@
+---
+title: "Week 4 Lecture Notes"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+# Lecture Week 4 Notes
+
+## Back to the forestry example 
+
+- $F(X)$ where x = biomass 
+- $Q(T)$ where T = age (this is periodic, where there is lots of time in between where we are not taking the harvest)
+
+We looked at one rotation, where the present value of profits from **one** rotation can be written as: 
+$$
+\mathrm{\max_{T_1} ~\Pi_{1}=pQ(T_{1})e^{-\delta T_{1}}-c}
+$$ 
+and the present value of the two rotations can be written as:
+
+$$
+\mathrm{\max_{T_{1},T_{2}}~\Pi_{2}=pQ(T_{1})e^{-\delta T_{1}}-c+pQ(T_{2})e^{-\delta (T_{1}+T_{2})}-c}
+$$
+**Where** $T_{1}$ and $T_{2}$ can be different rotation lengths. 
+
+- If we want to figure out the present value of infinite rotations, it would imply that we can just have one value for $T_{\infty}$ after the first rotation:
+
+$$
+\mathrm{\Pi_{\infty}=pQ(T_{\infty})e^{-\delta T_{\infty}}-c}
+$$
+So the present discounted value of $\Pi_{\infty}$ would be equal to: 
+
+$$
+\mathrm{\Pi_{\infty}=pQ(T_{\infty})e^{-\delta T_{\infty}}-c + \Pi_{\infty}e^{-\delta T_{\infty}}}
+$$
+now we can rearrange it to be: 
+
+$$
+\mathrm{\max_{T_{\infty}}~\Pi_{\infty}=\frac{pQ(T_{\infty})e^{-\delta T_{\infty}}-c}{1-e^{-\delta T_\infty}}}
+$$
+**Then** we maximize by choosing $T_{\infty}$ which would maximize our net present benefits from infinite rotations 
+
+The solution from `R_examples_2.Rmd` is as follows: 
+
+- 1: $T_{1}=32.5$ years
+- $\infty$: $T_{\infty}=30$ years
+- **If** $\delta = 0.05 \rightarrow \delta =0.04$
+  - Then $\infty$: $T_{\infty}$ increases
+
+This is because there is a penalty for waiting, so you want to shorten it up to bring all those future rotations to maximize the present value.
+
+If $c=0 \rightarrow T_{\infty} \lt T_{1}$, because you want to maximize profits and are not discounting cost. **But** since cost is not zero, you want to push them into the future to diminish them through discounting, so $c \gt 0 \rightarrow T_{\infty} (\lt or \gt) T_{1}$
+
+**We can also think about:** 
+- 1: $T_{1}=32.5$ years
+- $\infty$: $T_{\infty}=30$ years
+- $\delta = 0.05 \rightarrow \delta =0.04$
+- Then $\infty$: $T_{\infty}$ increases
+
+If we took the first equations first derivative and set it to zero and found the optimum it would look like this: 
+
+$$
+\mathrm{\max_{T_1} ~\Pi_{1}=pQ(T_{1})e^{-\delta T_{1}}-c} \\
+\mathrm{\frac{Q~'(T_{1})}{Q(T_{1})} = \delta} \\ 
+\mathrm{\uparrow~~~~~} \\
+\mathrm{\text{growth rate in timber volume}}
+$$ 
+
+Because the growth rate in the timber volume is equal to the interest rate.
+
+If we do the same for the $\infty$ problem, we get: 
+
+$$
+\mathrm{\max_{T_{\infty}}~\Pi_{\infty}=\frac{pQ(T_{\infty})e^{-\delta T_{\infty}}-c}{1-e^{-\delta T_\infty}}} \\ 
+\mathrm{\frac{Q~'(T)}{Q(T)}=\frac{\delta}{1-e^{-\delta T_{\infty}}}(1 - \frac{c}{pQ(T_{\infty})})}
+$$
+
+Its equal to the discount rate but modified by the other terms. 
+
+## How would the optimal timber harvest change if you're managing both for timber as well as other benefits that forests provide?
+
+Now: 
+
+- $Q(T_{1}) =$ the flow of timber at $T_1$ 
+- $B(t)=$  flow of amenities from the forest at time $t$ 
+  - The t is an indicator of time but separate from the time when you harvest the trees 
+  - Because you get the benefits continuously every year that you have the trees 
+Now if we account for the present value of both the benefits of standing stock and timber rotation it would look like this:
+
+$$
+\mathrm{\Pi = pQ(T)e^{-\delta T}-c + \int_{0}^{T}B(t)e^{-\delta t}dt} \\ 
+\mathrm{\text{The discreet time analog would be:}} \\
+\mathrm{\Pi = \rho^{T}pQ_{T}-c+ \sum_{t=0}^{t=T}\rho^{t}B_{T}}
+$$
+The following is the function for $B(t)$ where $A$ is a parameter and $\alpha$ is a rate of decline:
+
+$$
+\mathrm{B(t)=A(1-e^{-\alpha t})}
+$$
+
+So if you take the integral of the above, the **PVNB of the amenities** formula would look like this:
+
+$$
+\mathrm{PVNB(T)= \frac{A}{\delta}(1-e^{-\delta T}) - \frac{A}{\alpha + \delta}(1-e^{-(\alpha + \delta)T})}
+$$
+
+We solve this for a single rotation (in the Rmarkdown document) when all you care about is timber you get 
+
+- $T_{1}=32.6$ years
+
+When you add the above in with the parameter values you get 
+
+- $T_{1}^{A}=76$ years 
+  - So in other words if the amenity flows are large enough then you might never want to harvest the forest. 
+  
+**The point is that these amenities have a huge influence on the rotation length**
+
+- Because if you think of the upside down U curve with just the PVNB from timber, you get something with a hump at 32 years
+  - **BUT** if you add the function for amenity return, it plots a decaying logistic curve 
+- And when you combine them it greatly increases the maximum value and **the year at which you reach that maximum value** 
+
+## Brief talk about forest policy 
+
+Lets say you have a private company that owns timber resources and all they care about is maximizing the PVNB of the timber, but the population cares about the amenities provided by forests.
+Think about some policy that maximizes profit for the firms but takes into account the public benefits that the forest provides 
+
+- You could internalize the amenities to their yield by subsidies (payments for ecosystem services)
+
+$$
+\mathrm{\max_{T} ~\Pi = pQ(T)e^{-\delta T}-c + \int_{0}^{T}B(t)e^{-\delta t}dt}
+$$
+- You could penalize them for **not** providing ecosystem services
+- Or you could make the timber price higher (functions as a subsidy) $P_{1} \rightarrow P_{2}$, or you could tax timber which would increase the T 
+- You could also change $\delta$ by lowering interest rates, by lowering the risk that they face for example through publicly subsidized wildfire services, this would lower their rate of return and cause them to increase their rotation length 
+
+## Some more on timber harvesting 
+
+### Stochastic models with a shockk
+
+$$
+\mathrm{P_{t}=\mu + \epsilon_{t} \\
+P_{t+1}=\alpha P_{t} + \epsilon_{t+1}}
+$$
+
+$$
+\mathrm{P_{t+1}=\alpha_{0}+\alpha_{1}P_{t}+\epsilon_{t+1}}
+$$
+Prices in this model are auto-regressive $\rightarrow$ meaning low prices in one period tend to be followed by low prices in the next period 
+
+
+
+
+
+

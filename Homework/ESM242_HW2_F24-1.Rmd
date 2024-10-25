@@ -1,0 +1,312 @@
+---
+title: "ESM 242 HW 2"
+author: "Dustin Duncan"
+date: '2024-10-11'
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(nloptr)
+library(knitr)
+
+```
+
+
+
+## Question 1: Optimal fishery{.tabset}
+
+This question examines the optimal management of a fishery. The stock dynamics are given by:
+
+\begin{equation}
+X_{t+1} = X_{t} + F(X_{t}) - Y_{t}
+\end{equation}
+
+where $F(X_{t})=rX_{t}(1-X_{t}/K)$ and $Y_t=qX_t E_t$.  Profits in each year are given by $\pi_t=pY_t-cE_t^2$.  Parameters values are given by:
+
+\begin{equation}
+\begin{aligned}
+r& & 0.1\\
+K& & 1 \\
+q& & 0.01 \\
+p& & 500 \\
+c& & .01 \\
+\delta& &0.05
+\end{aligned}
+\end{equation}
+
+Assume the fishery manager chooses effort to maximize the present discounted value of profits over 50 periods, t=0,1,…,49.  Make sure to constrain the solution so that the amount of harvest $Y_{t}$ does not exceed the stock $X_{t}$ in any period.
+
+### A.
+
+What is the solution when the initial stock is 0.5?  Create a table that shows stock, effort, harvest, and profit in each period.  See fishery model in R_examples_1.Rmd for how to create a basic table from the nloptr output.
+
+<span style="color: blue;">**The Net Present Value of Benefits when the fishery manager's goal is to optimize effort is $177.36. With effort in each time period listed below in the table.**</span>
+
+
+```{r}
+period=50
+fish_fct <- function(choice, int_state, r, k, q, p, c, discount) {
+  
+  ## establishing vectors of variables of interest
+  state=vector(mode="numeric",length=0)
+  # yield=vector(mode="numeric",length=0) # Maybe it doesnt need yield
+  benefits=vector(mode="numeric",length=0)
+  # effort=vector(mode="numeric",length=0) # This is actually our choice
+  
+  ## Defining initial states
+  state[1]=int_state
+  # effort[1]=((r/choice)*(1-(state[1]/k))) # Getting rid of effort here 
+  # yield[1]=q*state[1]*choice # Getting rid of this and putting it into benefits
+  ## Because we're choosing optimal effort for each period choice needs to be a vector as well? 
+  benefits[1]=p*(q*state[1]*choice[1]) - c*(choice[1]^2)
+  
+  ## Defining subsequent states for nloptr to solve 
+  for(i in 2:period) {
+    state[i]=state[i-1] + ((r*state[i-1])*(1-(state[i-1]/k))) - (q*state[i-1]*choice[i-1])
+    # yield[i]=q*state[i]*choice # Getting rid of it here as well
+    benefits[i]=p*(q*state[i]*choice[i]) - c*(choice[i]^2)
+  }
+  
+  t=seq(from=0, to=period-1) # period and period + 1 wouldnt work... period -1 worked. Why?? Ah because we're going to time = 49
+  
+  pv=discount^t*benefits
+  
+  npv=sum(pv)
+  
+  return(-npv)
+  
+}
+
+constraint <- function(choice, int_state, r, k, q, p, c, discount) {
+  
+  state=vector(mode="numeric", length=0)
+  const=vector(mode="numeric", length=0)
+  
+  # Initialize state and constraint variable; int_state is the time zero value of the state variable; see below for the definition of the constraint variable 
+  state[1]=int_state
+  const[1]=(choice[1]*state[1]*q)-state[1]
+  
+  
+  for(i in 2:period){ # Loop values over the state and define constraint variable
+    
+    # Let the state evolve; this example matches the state equation for an exhaustible resource 
+    state[i]=state[i-1]-(choice[i-1]*state[i-1]*q)
+    
+    # Define constraint variable such that it is less than or equal to zero: if const[i] is leq 0, then choice[i]-state[i] is leq 0 and choice[i] is leq state[i]
+    const[i]=(choice[i]*state[i]*q)-state[i] 
+  }
+  return(const)
+}
+
+## Use this options list for nloptr
+
+local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
+options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
+
+period=50
+out_1a <- nloptr(x0=rep(1, period),
+                 eval_f = fish_fct,
+                 lb=rep(0, period), # lower bound, extraction cannot be lower than 0
+                 opts = options,
+                 int_state=0.5,
+                 r=0.1,
+                 k=1,
+                 q=0.01,
+                 p=500,
+                 c=0.01,
+                 discount=1/1.05,
+                 eval_g_ineq = constraint
+                 )
+# First run error: "Warning in discount^t * benefits : longer object length is not a multiple of shorter object length"
+
+# Second run: no error 
+cat("Optimal effort for each time period: \n", out_1a$solution, "\n\n", "Maximum PVNB when effort is optimized: ", -out_1a$objective)
+
+table_fct <- function(choice, int_state=0.5, r=0.1, k=1,q=0.01,p=500,c=0.01, discount=1/1.05, period=50) {
+  
+  ## Create vectors for variables of interest
+  state=vector(mode="numeric",length=0)
+  yield=vector(mode="numeric",length=0) 
+  benefits=vector(mode="numeric",length=0)
+  
+  ## Define initial states 
+  state[1]=int_state
+  yield[1]=q*state[1]*choice[1]
+  benefits[1]=p*yield[1] - c*choice[1]^2
+  
+  for(i in 2:period){
+    
+    state[i]=state[i-1] + (r*state[i-1]*(1-(state[i-1]/k))) - yield[i-1]
+    yield[i]=q*state[i]*choice[i]
+    benefits[i]=p*yield[i] - c*choice[i]^2
+  }
+  
+  t=seq(from=0, to=period-1)
+  
+  pv=discount^t*benefits
+  
+  npv=sum(pv)
+  
+  return(tibble(t=t, Stock=state, Effort=choice, Harvest=yield,`Present Value`=pv))
+  
+}
+
+table_1a = round(table_fct(out_1a$solution), 3)
+
+## Checking to see if the above function recognized that effort is a vector from out_1a$solution
+# test = tibble(effort=out_1a$solution) # Make tibble of effort from nloptr
+# diff = table_1a$Effort - test$effort # Subtract it from the table_fct's effort vector
+# range(diff) # if there is anything aside from zero then something is either not correct or the numbers are in the wrong order. This checks out 
+ 
+knitr::kable(table_1a, align='c')
+
+
+```
+
+
+### B.
+
+In class, we compared an optimally managed fishery to an open access fishery. In the optimal fishery, we found that harvest satisfied the following condition:
+
+\begin{equation}
+\frac{\partial \pi_t}{\partial Y_t}=\rho \lambda_{t+1}
+\end{equation}
+
+For the above model with effort as the choice variable rather than harvest, the condition becomes:
+
+\begin{equation}
+\frac{\partial \pi_t}{\partial E_t}=\rho \lambda_{t+1} \frac{\partial Y_t}{\partial E_t}
+\end{equation}
+
+Using the results in part A for $t=0$, find the value of $\lambda_1$ and say what this value means in words.
+
+**Substituting  the partial derivatives of each term in the equation and rearranging to solve for** $\lambda_{t+1}$, **we get the following formula:**
+
+$$
+\mathrm{\lambda_{t+1}=\frac{pqX_{t}-2cE_{t}}{\rho q X_{t}}}
+$$
+**Solving this in R:** 
+
+```{r}
+lambda2 = (500*0.01*0.5 - 2*0.01*4.14)/ ((1/1.05)*0.01*0.5)
+
+# cat("The shadow price, or benefit the manager would receive if they left one fish in the fishery at t=0, is $", lambda2, "\n")
+```
+<span style="color: blue;">**The shadow price, or benefit the manager would receive if they left one fish in the fishery at t=0, is $507.612.**</span>
+
+In an open access fishery, fishers do not recognize the benefit of leaving the stock for the future.  In other words, they set $\lambda_{t+1}=0$.  How much would be the effort and harvest of open access fishers in $t=0$?  How does the effort and harvest in $t=0$ compare between the optimal and open access cases?  Explain the difference.
+
+**The formula for effort in this scenario would be:** 
+
+$$
+\mathrm{ \text{Solving for effort when } \lambda_{t+1}=0 :\\ E_{t}=\frac{pqX_{t}}{2c} \\
+\text{And yield would be equal to:} \\
+Y_{t}=qX_{t}E_{t}}
+$$
+**Solving this in R:** 
+
+```{r}
+effort = (500*0.01*0.5)/(2*0.01)
+effort
+yield = 0.01*0.5*125
+yield
+
+# cat("In an open access fishery, the effort in t=0 would be", effort, "and the harvest in t=0 would equal", yield, ". This is higher than the initial biomass in the fishery which would reduce the biomass to zero. Biologically, they could not harvest this much biomass from the fishery. However, it implies that because in the open access case the fishers place no value on leaving a fish in the water, they would harvest the stock to extinction in the first time period to maximize the present value of the harvest which would be lower in following years due to discounting.")
+```
+<span style="color: blue;">**In an open access fishery, the effort in t=0 would be 125, and the harvest in t=0 would equal 0.625. This is higher than the initial biomass in the fishery which would reduce the biomass to zero. Biologically, they could not harvest this much biomass from the fishery. However, it implies that because in the open access case the fishers place no value on leaving a fish in the water, they would harvest the stock to extinction in the first time period to maximize the present value of the harvest which would be lower in following years due to discounting.**</span>
+
+### C.
+
+What is the solution when the initial stock is 0.1?  Create a table that shows stock, effort, harvest, and profit in each period.
+
+<span style="color: blue;">**The maximum PVNB when the initial stock is 0.1, under optimal effort, is $69.31.**</span>
+
+```{r}
+out_1c <- nloptr(x0=rep(1, period),
+                 eval_f = fish_fct,
+                 lb=rep(0, period), # lower bound, extraction cannot be lower than 0
+                 opts = options,
+                 int_state=0.1,
+                 r=0.1,
+                 k=1,
+                 q=0.01,
+                 p=500,
+                 c=0.01,
+                 discount=1/1.05,
+                 eval_g_ineq = constraint
+                 )
+cat("Optimal effort for each time period when initial stock is 0.1: \n", out_1c$solution, "\n\n", "Maximum PVNB when effort is optimized: ", -out_1c$objective)
+
+table_1c = round(table_fct(choice=out_1c$solution, int_state=0.1), 3)
+
+knitr::kable(table_1c)
+
+```
+
+
+### D.
+
+What is the solution when the initial stock is 0.9?  Create a table that shows effort and stock in each period
+
+<span style="color: blue;">**The maximum PVNB when the initial stock is 0.9, under optimal effort, is $253.60.**</span>
+
+```{r}
+out_1d <- nloptr(x0=rep(1, period),
+                 eval_f = fish_fct,
+                 lb=rep(0, period), # lower bound, extraction cannot be lower than 0
+                 opts = options,
+                 int_state=0.9,
+                 r=0.1,
+                 k=1,
+                 q=0.01,
+                 p=500,
+                 c=0.01,
+                 discount=1/1.05,
+                 eval_g_ineq = constraint
+                 )
+cat("Optimal effort for each time period when initial stock is 0.9: \n", out_1d$solution, "\n\n", "Maximum PVNB when effort is optimized: ", -out_1d$objective)
+
+table_1d = round(table_fct(choice=out_1d$solution, int_state=0.9), 3)
+
+knitr::kable(table_1d)
+
+
+
+```
+
+### E.
+
+Compare the stock in the last period across the three solutions.  What do you notice?  Can you explain the pattern in terms of the fundamental equation of renewable resources?
+
+<span style="color: blue;">**In terms of the fundamental equation of renewable resources, the stock in the last period can be explained by referencing the growth rate of the stock and interest rate. In scenarios A and C, the initial stock is growing at a rate that is greater than the interest rate. Under optimal effort, this indicates that it would be more valuable to leave biomass in the fishery, because its value after growing would be higher than its current value, leading to a higher biomass at the final time point compared to the initial biomass. The inverse is true for scenario D, where the growth of the stock at the initial time point is less than the interest rate, because it is close to its carrying capacity. As a result, it is more beneficial to harvest biomass from the fishery to maximize net present value, leading to a lower biomass at the final time point compared to the initial. **</span>
+
+```{r}
+stock_compare = data.frame(a = table_1a[50, 2], c = table_1c[50, 2], d = table_1d[50, 2]) %>% 
+  rename(`Solution A` = Stock,
+         `Solution C` = Stock.1,
+         `Solution D` = Stock.2,)
+
+knitr::kable(stock_compare, align='c', row.names = TRUE)
+```
+
+### F.
+
+Compare the value of the objective function (i.e., the present value of profits) across the three solutions.  Explain the differences.  
+
+<span style="color: blue;">**Similarly to above, both scenario A and C have a lower net present value of profits than scenario D. For scenario C, the initial biomass and subsequent growth rate under optimal effort indicated that it would be more beneficial to let the stock grow before harvesting. Due to discounting and the initially low biomass, the stock was not capitalized on immediately, increasing the effect of discounting on the PVNB. For scenario A, fishers were able to harvest more in beginning time periods compared to scenario C, but incentivized to let the stock grow, leading to lower profits than scenario D due to discounting. In scenario D, the initial biomass was high enough to incentivize high effort in the beginning time periods, and was large enough to grow and continually provide benefits throughout the timeframe, leading to the highest PVNB of the three scenarios. **</span>
+
+```{r}
+f = data.frame(a = round((-out_1a$objective), 3), c = round((-out_1c$objective), 3), d = round((-out_1d$objective), 3)) %>% 
+  rename(`Solution A` = a,
+         `Solution C` = c,
+         `Solution D` = d)
+knitr::kable(f, align = 'c')
+
+
+```
+

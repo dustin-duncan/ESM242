@@ -1,0 +1,504 @@
+---
+title: "Week 2 Lecture Notes"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r}
+library(tidyverse)
+# install.packages("nloptr")
+library(nloptr)
+library(knitr)
+```
+
+## Examples of Natural Resource Economics in R
+
+-   We get the specific functional form and the parameters that we're using, then we build the model in R with a custom function (I think)
+
+### Example 1: optimal forest rotation in R
+
+We seek to select the optimal harvest age T\* for an even-aged forest to maximize the present discounted value of profits from a single rotation. The timber yield is given by $Q(T)=e^{a-b/T}$, where $a=10, b=53.27$, the cost of planting the stand is $c=300$, the price of a unit of timber is $p=1$, and the discount rate is $\delta=0.05$. Thus, we choose $T^*$ to maximize $PVNB(T^*)=pQ(T^*)e^{-\delta T^*} - c$ where $T^* \gt 0$.
+
+### A.
+
+What is the optimal rotation $T^*$?
+
+[**Solution**]{style="color: blue;"}
+
+[Build optimization problem with an objective function and constraint ensuring that harvest age $T^*$ is strictly positive]{style="color: blue;"}
+
+```{r}
+
+# A code chunk starts with '''{r} and ends with '''.  You can run a code chunk by clicking the arrow in the upper right (after you've run the libraries code chunk)
+
+# The statement below designates a function named obj_fcn_tree to depend on the choice variable, in this case the rotation length, and a set of parameters.  "choice" needs to be in the first position, but it doesn't have to have this name.  Note the use of <- rather than =
+
+obj_fcn_tree <- function(choice,a,b,c,p,discount) { 
+  
+  Q=exp(a-b/choice) # 'exp' stands in for 'e^X'
+  benefits = p*Q*exp(-discount*choice)-c # Discount is the delta from above 
+  ## Benefits are the present value of net benefits (PVNB in the above formula)
+  
+  ## Notice the minus sign in front of benefits.  This is added because we want nloptr to find the maximum of the function; it always find the minimum.
+
+  return(-benefits)
+}
+
+
+## Optimization ##
+
+# Always include this options statement
+# "NLOPT_LN_COBYLA"
+options=list("algorithm"="NLOPT_LN_COBYLA", # Options are arguments for nloptr
+             # COBYLA: "Constrained Optimization by Linear Approximation"
+             xtol_rel=1e-8, # stopping criterion for relative change reached (default is 1e-4)
+             maxeval=16000 # maximum number of function evaluations 
+             )
+
+# This next statement labels the output from running nloptr as out_1a.  Before running it the first type, load the package by typing install.packages("nloptr") in the command line below.  
+# Inside the parentheses we define 
+## 1) the initial value of choice, 
+## 2) the function we want evaluated, 
+## 3) the lower bound on choice; can also specify the upper bound with ub=, 
+## 4) the options list, 
+## 5) the values of the parameters for the function. Type ??nloptr in the command line to get to a help page.
+
+out_1a=nloptr(x0=1, # Vector with starting values for optimization
+          eval_f=obj_fcn_tree, # Function that returns the value of the objective function (benefits)
+          lb=0, # Vector with lower bounds of the controls
+          opts = options, # 'algorithm' is required, these control the termination conditions 
+          discount=0.05,a=10,b=53.27,c=300,p=1 # These are the arguments that are provided to the objective function 
+          )
+
+
+# There are lots of values you can print out after running nloptr.  The statement below prints out the value of choice that maximizes benefits.  The command refers to the output label "out_1a" and what should be printed "solution", separated by a $,  In the Global Environment, click on the search icon to the right of out_1a after you run the code chunk and you can see what else can be printed out.  
+
+cat("The optimal harvest age for timber in an even-aged forest is:", out_1a$solution, "\n")
+
+cat("The value of the objective function (PVNB) at the optimum year is:", -out_1a$objective, "\n")
+out_1a$message
+
+
+```
+
+## A quick explanation of loops
+
+We will often solve problems that involving summations over time. As a simple example, how would you sum the numbers between 1 and 100?
+
+```{r}
+
+total=0
+
+for(i in 1:100){
+
+total=total+i  
+  
+  
+}
+
+print(total)
+
+```
+
+## Example 2: Simple fishery
+
+This problem involves a fish stock that evolves according to $X_{t+1}=X_t+F(X_t)-Y_t$, where the growth function is given by $F(X_t)=rX_t(1- \frac{X_t}{K})$. The profits from the fishery in each period are $pY_t-(\frac{c}{2})* \frac{Y_t^2}{X_t}$ and the catch is proportional to the stock: $Y_t=\alpha X_t$. The objective is to maximize the present value of net benefits (PVNB) from time 0 to time 19 by selecting the catchability coefficient $\alpha$:
+
+$$
+\max_{\alpha} \sum^{t=19}_{t=0}\rho^t(pY_t-(\frac{c}{2})*\frac{Y_t^2}{X_t})
+$$
+
+subject to $X_{t+1}=X_t+rX_t(1-X_t/K)-Y_t$ and $X_0$ given. Use the following parameter values: $\rho=\frac{1}{1.05}$, p=5, c= 1, r=1, K=1, $X_0=0.1$.
+
+### A.
+
+What is the optimal value of the catchability coefficient?
+
+[**Solution** ]{style="color: blue;"}
+
+```{r}
+
+
+# For this problem, the function is obj_fcn_fish, which depends on the choice variable (choice) and parameters, which includes the initial state of the system, or X_0, and the length of the planning horizon (19), labeled "period". 
+
+obj_fcn_fish <- function(choice,int_state,discount,p,c,r,K,period) {
+  
+# For this problem, we have 20 values for each X (state), Y (yield), and \pi (benefits), and so we need to designate variables as vectors.  mode says the vector will be populated with numbers, a length of zero lets us define the length (20) later  
+  
+  state<-vector(mode="numeric", # Mode says vector will be populated with numbers
+                length=0) # Setting length to zero lets us define it later 
+  yield<-vector(mode="numeric",length=0)
+  benefits<-vector(mode="numeric",length=0)
+  
+# The statements below define the three variables in the initial period, which must be designated as a 1 even though our sum starts at 0.  
+  
+  
+  state[1]=int_state
+  yield[1]=choice*state[1]
+  benefits[1]=p*yield[1]-(c/2)*(yield[1]^2)/state[1]
+  
+# To define the three variables in the remaining periods, I'm using a loop from 2 to period+1 (below, I will define period to equal 19).  Notice that the loop starts and ends with braces.  We're still within the loop defining the function.
+  
+  for(i in 2:(period+1)){ # Remember period is the length of the planning horizon
+    
+# The following three equations define the state, yield, and benefit in a given period i.  Notice that the state equation for period i depends on values in period i-1.
+    
+    state[i]=state[i-1]+r*state[i-1]*(1-state[i-1]/K)-yield[i-1] 
+    # The state in period i depends on the previous period's (i-1) state
+    yield[i]=choice*state[i] # Yield depends on the choice and the state in period i
+    benefits[i]=p*yield[i]-(c/2)*(yield[i]^2)/state[i] 
+    # Benefits depend on the yield in i, and the state in i, with the parameters p and     c included 
+       
+             
+  }
+  
+  
+# The following statement defines a sequence of integers from 0 to period (i.e., 0, 1, ...).  Subsequent statements discount benefits, add those values up using the sum function, and then returns the object to be minimized by nloptr: -npv
+  
+  t=seq(from=0,period) # Defines the sequence of integers in period 
+  
+  pv=discount^t*benefits # This is the formula for discounting benefits over time
+    
+  npv=sum(pv) # This adds the discounted benefits up and is the goal of our objective function, to maximize this sum by choosing the optimal 'alpha' or harvest rate 
+  
+  return(-npv)
+}
+
+
+# I will always give you the options list
+
+local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
+options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
+
+
+
+
+
+out_2a=nloptr(x0=0.5, # Starting values for the optimization
+              eval_f=obj_fcn_fish, # Function that we defined above. 
+              ## "Calculate the state of the fishery over time, and the benefits for a                   choice over time, by choosing an optimal catchability coefficient,                    alpha" 
+              lb=0, # Lower bound is zero 
+              opts = options, # Options defined above 
+              int_state=0.1,discount=1/1.05,p=5,c=1,r=1,K=1,period=19) # Function arguments 
+
+
+cat("The optimal alpha term to maximize benefits over time in this fishery is:", out_2a$solution )
+cat("By choosing the optimal alpha term, the total net present benefits will be:", -out_2a$objective )
+
+
+
+```
+
+```{r}
+## Function for making a table; I'm designating the values of parameters here.
+
+stock<-function(choice,int_state=0.1,p=5,c=1,r=1,K=1,discount=1/1.05,period=19){
+  
+  
+    #make storage vectors
+  state<-vector(mode="numeric",length=0)
+  yield<-vector(mode="numeric",length=0)
+  benefits<-vector(mode="numeric",length=0)
+  
+
+  #initial state and benefits
+  
+  
+  state[1]=int_state
+  yield[1]=choice*state[1]
+  benefits[1]=p*yield[1]-(c/2)*(yield[1]^2)/state[1]
+  
+  for(i in 2:(period+1)){
+    
+# Add the stock dyanmics
+    
+  state[i]=state[i-1]+r*state[i-1]*(1-state[i-1]/K)-yield[i-1]
+  yield[i]=choice*state[i]
+  benefits[i]=p*yield[i]-(c/2)*(yield[i]^2)/state[i]
+             
+  }
+  
+  #define period and discount
+  t=seq(from=0,period)
+  
+  pv=discount^t*benefits
+  
+  npv=sum(pv)
+
+# This time we return a data frame with the variables we want in the table.  The value after the = indicates the column label.
+  
+  return(data.frame(t=t,PV=pv,X=state,Y=yield))
+
+}
+
+# The next command is telling R to use the solution found above, choice, to evaluate the function stock and to round the values in the data frame to two places past the decimal point.  The second command says to make a table with these values. 
+
+tbl_2a=round(stock(choice=out_2a$solution),2)      #  2 indicates rounding units
+
+kable(tbl_2a)
+
+
+```
+
+### B.
+
+What is the optimal catchability coefficient $\alpha$ when different values can be selected in each period?
+
+[**Solution** ]{style="color: blue;"}
+
+```{r less_simple}
+
+obj_fcn_fish<-function(choice,int_state,p,c,r,K,discount,period){
+  
+  
+    #make storage vectors
+  state<-vector(mode="numeric",length=0)
+  yield<-vector(mode="numeric",length=0)
+  benefits<-vector(mode="numeric",length=0)
+  
+  
+
+  #initial state and benefits; notice that choice is now indexed by 1 (and i below) because there will be 20 different values.
+  
+  
+  state[1]=int_state
+  yield[1]=choice[1]*state[1]
+  benefits[1]=p*yield[1]-(c/2)*(yield[1]^2)/state[1]
+  
+  for(i in 2:(period+1)){
+    
+# Add the stock dynamics
+    
+    state[i]=state[i-1]+r*state[i-1]*(1-state[i-1]/K)-yield[i-1]
+    yield[i]=choice[i]*state[i]
+    benefits[i]=p*yield[i]-(c/2)*(yield[i]^2)/state[i]
+       
+             
+  }
+  
+  
+  #define period
+  t=seq(from=0,period)
+  
+  pv=discount^t*benefits
+    
+  npv=sum(pv)
+  
+  return(-npv)
+  
+  
+}
+
+
+local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
+options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
+
+
+# Notice that below you need to specify twenty initial value of choice, which you can do with the rep statement; same goes for lower and upper bounds.
+
+
+out_2b=nloptr(x0=rep(0.5,times=20), # x0 is the starting value for choice, and replicating it 20 times makes it a vector 
+              eval_f=obj_fcn_fish,
+              lb=rep(0,times=20),
+              ub=rep(1,times=20),
+              opts = options,int_state=0.1,discount=1/1.05,p=5,c=1,r=1,K=1,period=19)
+
+
+print ( -out_2b$objective )
+print ( out_2b$solution )
+
+```
+
+```{r}
+## Function for making a table
+
+stock<-function(choice,int_state=0.1,p=5,c=1,r=1,K=1,discount=1/1.05,period=19){
+  
+  
+    #make storage vectors
+  state<-vector(mode="numeric",length=0)
+  yield<-vector(mode="numeric",length=0)
+  benefits<-vector(mode="numeric",length=0)
+  
+
+  #initial state and benefits; notice that choice is now indexed by time
+  
+  
+  state[1]=int_state
+  yield[1]=choice[1]*state[1]
+  benefits[1]=p*yield[1]-(c/2)*(yield[1]^2)/state[1]
+  
+  for(i in 2:(period+1)){
+    
+# Add the stock dyanmics
+    
+  state[i]=state[i-1]+r*state[i-1]*(1-state[i-1]/K)-yield[i-1]
+  yield[i]=choice[i]*state[i]
+  benefits[i]=p*yield[i]-(c/2)*(yield[i]^2)/state[i]
+             
+  }
+  
+  #define period and discount
+  t=seq(from=0,period)
+  
+  pv=discount^t*benefits
+  
+  
+  return(data.frame(t=t,PV=pv,X=state,Y=yield,alpha=choice))
+
+}
+
+tbl_2b=round(stock(out_2b$solution),1)
+
+kable(tbl_2b)
+```
+
+## Example 3: Stock Pollutant {.tabset}
+
+This problem involves a stock pollutant that evolves according to $Z_{t+1}=z_t(1-\gamma)+\alpha*q_t$, where $\gamma$ captures how much pollution degrades each period and $\alpha$ captures how much pollution is produced by production $q_t$. Suppose that production is worth $p$ per unit of output, so net revenues are $pq$. Damages caused by pollution are $C=aZ_t - bZ_t^2$. The objective is to maximize the present value of net benefits (PNVB) from time 0 to time 10:
+
+$$
+\mathrm{\max_q \sum^{t=10}_{t=0}\rho^t(pq_t-(aZ_t-bZ_t^2))}
+$$
+
+subject to $Z_{t+1}=z_t(1-\gamma)+\alpha*q_t$ and $Z_0$ given. Use the following parameter values: $\rho=\frac{1}{1.05}$, p=100, a= 2, b=-0.25,$\gamma=0.2$, $\alpha=2$, and $Z_o$=20.
+
+### A.
+
+What is the amount of production $q_t$ in each period according to the solution?
+
+[**Solution** ]{style="color: blue;"}
+
+```{r}
+
+
+# Notice that period is not included as a parameter of the function
+
+obj_fcn_stock<-function(choice,int_state,a,b,gamma,p,alpha,discount){
+
+  
+# The state and benefits vectors will have the same length as the choice vector    
+  
+    #make storage vectors
+  state<-vector(mode="numeric",length=length(choice))
+  benefits<-vector(mode="numeric",length=length(choice))
+  
+
+  #initial state and benefits
+  
+  
+  state[1]=int_state
+  
+  benefits[1]=p*choice[1]-(a*state[1]-b*state[1]^2)
+
+#  The loop goes from 2 to whatver the length of choice ends up being
+    
+  for(i in 2:length(choice)){
+    
+# Add the stock dyanmics
+    
+    state[i]=state[i-1]*(1-gamma)+alpha*choice[i-1] #Add the time from the choice to the state
+    
+    
+  benefits[i]=p*choice[i]-(a*state[i]-b*state[i]^2)
+       
+             
+  }
+  
+  
+  #define period
+  
+# Populating a vector with 0,1,... that ends with the length of the benefits vector
+  
+  t=seq(from=0,length.out=length(benefits))
+  
+  pv=discount^t*benefits
+    
+  npv=sum(pv)
+  
+  return(-npv)
+  
+  
+}
+
+
+local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
+options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
+
+# Because I didn't include period as a parameter in the function, I need to define it here.
+
+period=11
+
+out_3a=nloptr(x0=rep(1,period),eval_f=obj_fcn_stock,
+              lb=rep(0,period), # Lower bound, cannot have negative extraction
+              ub=rep(10,period), # Upper bound, extraction cannot exceed 10
+              opts = options,
+              int_state=20,
+              discount=1/1.05,
+              a=2,
+              b=-.25,
+              gamma=0.2,
+              alpha=2,
+              p=100)
+
+
+ta_solution=round(out_3a$solution,5)
+
+ta_value=round(-out_3a$objective,3)
+
+```
+
+[ Comments can be added here ]{style="color: blue;"}
+
+```{r}
+## Function for making a table
+
+stock<-function(choice,int_state=20,a=2,b=-0.25,gamma=.2,p=100,alpha=2,discount=1/1.05){
+  
+  
+    #make storage vectors
+  state<-vector(mode="numeric",length=length(choice))
+  benefits<-vector(mode="numeric",length=length(choice))
+  
+
+  #initial state and benefits
+  
+  
+  state[1]=int_state
+  
+  benefits[1]=p*choice[1]-(a*state[1]-b*state[1]^2)
+  
+  for(i in 2:length(choice)){
+    
+# Add the stock dyanmics
+    
+    state[i]=state[i-1]*(1-gamma)+alpha*choice[i-1] #Add the time from the choice to the state
+    
+  benefits[i]=p*choice[i]-(a*state[i]-b*state[i]^2)
+             
+  }
+  
+  #define period and discount
+  t=seq(from=0,length.out=length(benefits))
+  
+  pv=discount^t*benefits
+  
+  
+  return(data.frame(t=t,PV=pv,Z=state,q=choice))
+
+}
+
+tbl_3a=round(stock(out_3a$solution),1)
+
+kable(tbl_3a)
+```

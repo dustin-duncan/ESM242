@@ -1,0 +1,188 @@
+---
+title: "Week 3 Lecture Notes"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+# Lecture Week 3 Notes
+
+```{r}
+library(tidyverse)
+# install.packages("nloptr")
+library(nloptr)
+library(knitr)
+```
+
+## Dynamic model of optimal fishery (Open Access Fishery)
+
+**Common property**
+
+- Refers to the case where the resource is not recognized as private property until its actually captured 
+  - Fish belong to everybody until they are brought on to the boat 
+  - Can regulate access to the fishery 
+
+**Open-Access**
+
+- No restrictions on fishers in terms of how much they can harvest or their entry into the fishery 
+  - Can lead to overfishing if no restriction on who can enter and how much they can take 
+  - The stock can be drawn down and perhaps even collapsed or extinct 
+  - Can think about overfishing from a biological standpoint (stock, $X^{MSY} \lt$ MSY)
+  - from an economic standpoint where stock $X^* \lt$ the level that maximizes the value of the fishery or resource
+  
+- MSY and maximum stock level tend to be close to each other 
+
+Formula for maximizing value of resource: 
+
+$$
+\begin{align}
+\mathrm{\max_{Y_{t}} \sum_{t=0}^{\infty} p^{t} \Pi (X_{t},Y_{t})}~ \\
+\mathrm{\text{subject to: } X_{t+1}=X_{t} +F(X_{t})-Y_{t}} \\
+\mathrm{\text{where } X_{o} \text{ is given}} \\
+\mathrm{\text{Labrongian} = \sum_{t=0}^{\infty} p^{t}( \Pi (X_{t},Y_{t})~ + p \lambda_{t+1}[x_{t} + F(X_{t})-Y_{t} - X_{t+1}])} \\ 
+\mathrm{\text{where } \lambda_{t+1}= \text{ shadow price on constraint} }
+\end{align}
+$$
+
+If we relax the constraint $\lambda$: 
+
+- We're giving ourselves one more unit of the stock in t+1, so its the value of one more unit of $X_{t+1}$
+- Then we would take first order derivatives of the labrongian function with respect to $Y$, X, and $\lambda$, as follows:
+
+$$
+\begin{align}
+\mathrm{ \frac{\delta L}{\delta Y_t} = \frac{\delta \Pi}{\delta Y_t} - \rho \lambda_{t+1}=0} \\
+\mathrm{ \frac{\delta L}{\delta X_t} = \frac{\delta \Pi}{\delta X_t} - \rho \lambda_{t+1}(1 + \frac{\delta F}{\delta X_t} - \lambda_t =0} \\\
+\mathrm{ \frac{\delta L}{\delta \lambda_t} = X_t + F(X_t)-Y_t-X_{t+1} =0}
+\end{align}
+$$
+
+These are the conditions you would need to make sure hold in every period to maximize the PV of the stream of profits from this fishery, subject to the biological constraint above.
+
+**Focusing on the derivative of Labrongian with respect to Y**
+With some rearranging, you get $\frac{\delta \Pi}{\delta Y_t} = \rho \lambda_{t+1}$
+
+- This is the value of having a fish in the next period (t+1) (discounted with $\rho$), so the value of taking a fish is equal to the value of leaving a fish if you were at the optimal harvest 
+  
+**Since we have an infinite horizon, we can look at the steady state** 
+
+- When we look at steady state, these conditions above will hold, but the timesteps dont matter any more 
+  - So we look for $Y_{ss}, X_{ss},~and~\lambda_{ss}$
+  
+So 
+
+$$
+\begin{aligned}
+\mathrm{\frac{\delta \Pi}{\delta Y} = \rho \lambda_{ss}} \\
+\mathrm{\frac{\delta \Pi}{\delta X} = \rho \lambda_{ss}[1 +F~'(X_{ss})]=\lambda_{ss}} \\
+\mathrm{X_{ss}+F(X_{ss})-Y_{ss}=X_{ss} \leftarrow ~ \text{ harvest = growth}} \\ 
+\mathrm{\text{Can maniulate to look like this: }} \\ 
+\mathrm{F~'(X) + \frac{ \frac{\delta \Pi}{\delta X} }{ \frac{\delta \Pi}{\delta Y} }= \delta} \\ 
+\mathrm{\text{(The fundamental equation of renewable resources)}} 
+\end{aligned}
+$$
+**The fundamental equation of renewable resources** defines the condition that the steady state stock has to satisfy if the renewable resource is being managed optimally
+
+- To interpret: assume that $\Pi = (p-c)Y$. 
+- If this is true then $\frac{\delta\Pi}{\delta X}=0$, and $F~'(X_{ss})=\delta$
+
+So $F(X)$ is related to $X$ is an upside down U shape, and the solution is where the slope of the function is equal to the interest rate
+
+**Why would this be the case?**
+
+- Imagine that you could take the proceeds from your fishery and either harvest the resource and put the money in a bank account, or you can keep the money in the fish account 
+  - Bank account yields a rate of return equal to $\delta$
+  - Fish account yields a rate of return equal to $F~'(X)$
+  - If you started out with a stock that was further towards the left, the slope being high positive would indicate that you're making more money on your fish account than your bank account, so you would not harvest and your fish stock would grow. 
+    - If ($F~'(X) \gt \delta$), leave the fish stock
+  - **Inversely**, when $F~'(X) \lt \delta$, you should harvest because your bank account would earn more money than your fish account 
+  - **So the optimal state of the fishery is where** $F~'(X) = \delta$
+    
+### What about maximum sustained yield?
+
+MSY is the stock that would produce the maximum yield possible in perpetuity $Y_{MSY}$
+
+- This is usually not too far off from the optimally managed fishery
+- The primary difference is that the MSY stock $F~'(X^{MSY})=0$
+  
+## Now an open access fishery: 
+
+- We will now have a variable $E_{t+1}$ that defines the amount of entry or **effort** in the fishery at time t+1
+
+$$
+\begin{align}
+\mathrm{E_{t+1}=E_t + \eta \frac{[p H(X_{e},E_{t})-c E_{t}]}{\Pi_{t}}} \\ 
+\mathrm{\eta \gt 0} \\
+\mathrm{\text{When profits are positive, there will be entry into the fishery}} \\
+\mathrm{\text{When profits are negative, there will be exit from the fishery}} \\
+\mathrm{X_{t+1}=X_{t} + F(X_{t})-Y_{t}} \\
+\mathrm{X_{t+1}=X_{t} + F(X_{t})-H(X_{t},E_{t})} \\
+\mathrm{F(X_{t})=rX_{t}(1-\frac{X_{t}}{K})} \\ 
+\mathrm{H(X_{t}, E_{t})=q X_{t} E_{t} \text{ , where q} \gt 0}
+\end{align}
+$$
+    
+The expression $\eta \frac{[p H(X_e,E_t)-cE_t]}{\Pi_t}$ only leads to steady state when profits are equal to zero. 
+
+- So the steady state amount of effort happens when profits are zero; to do this, set profit equal to zero
+  
+$$
+\begin{align}
+\mathrm{E_{ss} \rightarrow \Pi = 0} \\
+\mathrm{pqX_{ss}E_{ss}-c E_{ss} =0} \\
+\mathrm{X_{ss}=\frac{c}{pq}} \\ 
+\mathrm{rX_{ss}(1-\frac{X_{ss}}{K})=qX_{ss}E_{ss}} \\ 
+\mathrm{\text{When we cancel these X's and divide by q: }} \\
+\mathrm{E_{ss}=\frac{r}{q}(1-\frac{X_{ss}}{K})} \\
+\mathrm{X_{ss}=\frac{c}{pq} \leftarrow \text{Steady state stock}} \\
+\mathrm{E_{ss}=\frac{r}{q}(1-\frac{c}{pqK}) \leftarrow \text{Steady state effort}}
+\end{align}
+$$
+**So we get entry up until the point where profits get driven to zero.**
+
+If it happened to be the case where the initial stock were equal to the steady state stock $X_o=X_{ss}$ and the initial effort were equal to the steady state effort $E_o=E_{ss}$, the stock would remain there.
+
+**What about when we start with different levels of these initial values?** 
+
+- When the effort level is initially lower than stock, eventually you get to the steady state but it follows a spiral pattern of changing effort vs stock 
+
+## Summary 
+
+- Lets look at what we found as the difference betweeen the stock and effort profits between optimal fishery and open-access 
+  - **Open-access:** small stock, zero profits, and high effort
+    - You don't recognize the value of leaving fish behind because if you do, someone else is going to come and take it, so fishers deplete the stocks 
+    - $\frac{\delta \Pi}{\delta Y}=0 \rightarrow \text{Low Stock}$
+  - **Optimal:** Large stock, high profits, low effort (because effort is restricted)
+    - You recognize the value of leaving  fish behind so end up with a larger stock
+    - $\frac{\delta \Pi}{\delta Y}=\rho \lambda \rightarrow \text{Larger Stock}$
+    
+### Fisheries Policies 
+
+- There is a lot of interest in Individual Transferable Quotas
+  - You set a quota, assign individuals portions of that quota, and allow individuals to trade those quotas 
+    - This is done by setting a Total Allowable Catch (TAC)
+  - What happens is that some fishers end up with some demand for quota, and would be willing to harvest until the point where the price for an ITQ were exactly equal to their marginal profit: $\frac{\delta \Pi}{\delta Y}=p_{ITQ}$
+  - This effectively controls the price of the ITQ, and if the TAC is set properly, the price of an ITQ would be equal to the value of leaving another fish in the ocean (discounted one period): $\frac{\delta \Pi}{\delta Y}=p_{ITQ}=\rho \lambda$
+
+## Optimal Steady State:
+
+$$
+
+\mathrm{F~'(X) + \frac{ \frac{\delta \Pi}{\delta X} }{ \frac{\delta \Pi}{\delta Y} }= \delta} \\ 
+\mathrm{Y=F(X)} \\ 
+\mathrm{\Pi=(p-c)Y} \\ 
+\mathrm{\frac{\delta \Pi}{\delta X}=0} \\ 
+\mathrm{F~'(X)=\delta \leftarrow \text{discount rate}} \\ 
+\mathrm{ \uparrow ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~} \\ 
+\mathrm{\text{growth rate in  livestock} ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+
+$$

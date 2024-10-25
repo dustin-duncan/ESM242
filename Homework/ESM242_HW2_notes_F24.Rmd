@@ -1,0 +1,46 @@
+---
+title: "HW 2"
+author: "Dustin Duncan"
+date: "2024-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+**Notes** from class about Homework 2
+
+$$
+\mathrm{\Pi_t=pY_t-cE_{t}^2} \\ 
+\mathrm{Y_t=qX_t E_t} \\
+\text{therefore} \\
+\mathrm{\Pi_t=pqX_t E_t-cE_{t}^2} \\
+\text{Subject to:} \\
+\mathrm{Y_t \leq X_t} \\ 
+\text{which translates as:} \\
+\mathrm{qX_tE_t \leq X_t} 
+$$
+
+## Optimal Fishery equation 
+
+The following is true for every period in the optimal fishery:
+
+To get the second equation you would need to take the partial derivative of Y with respect to E 
+
+$$
+\text{the value of taking a fish:} \\
+\mathrm{\frac{\delta~\Pi_t}{\delta~Y_t} = p \lambda_{t+1}} \\
+\mathrm{\frac{\delta~\Pi_t}{\delta~E_t}=p \lambda_{t+1} \frac{\delta~Y_t}{\delta~E_t}} \\ 
+\text{solve for lambda in the following} \\ 
+\mathrm{\frac{\delta~\Pi_o}{\delta~E_o} = p \lambda_{1}\frac{\delta~Y_o}{\delta~E_o}} \\ 
+\text{in an open access, the value of taking the last fish is:} \\ 
+\mathrm{\frac{\delta \Pi_t}{\delta Y_t}=0} \\ 
+\mathrm{\frac{\delta \Pi_o}{\delta E_o}=0} \to \text{solve for } E_o \\
+\text{solved: } \\ 
+\mathrm{\frac{\delta \Pi_t}{\delta Y_t}=qX_t} \\
+\mathrm{\frac{\delta \Pi_t}{\delta E_t}=pqX_t-2cE_t} \\
+$$
+

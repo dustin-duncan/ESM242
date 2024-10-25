@@ -1,0 +1,258 @@
+---
+title: "Week 1 Lecture Notes"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+```{r}
+library(tidyverse)
+```
+
+# Lecture 1: Natural Resource Economics
+
+## Course Objectives:
+
+-   Learn how to use resources **over time** that **maximizes** their value
+    -   **Over time** is the main difference between this and ESM 210 Economics
+-   Learn the implications towards how **Environmental Justice** plays into markets
+-   Solve problems numerically using **optimization algorithms** in R
+
+### Textbook:
+
+-   *Resource Economics Second Edition*, John M. Conrad
+
+-   Readings are optional but highly recommended
+
+### Grading:
+
+-   **Homework assignments**: 40% of grade
+    -   Five homework assignments
+    -   Available on Tuesdays, introduced that Wednesday, and due the following Wednesday
+    -   1-4 are R coding exercises
+    -   Assignment 5 is answering questions based on group presentations
+-   **Take home midterm**: 30% of grade
+    -   R coding exercise done individually
+    -   Handed out before November 7, due at the beginning of class on November 13
+-   **Group presentations and final slide deck**: 30% of grade
+    -   Identify an interesting dynamic natural resource problem, formulate a research question, develop a mathematical statement of the problem, find a numerical solution to the problem, and report on findings
+    -   Three deliverables:
+        1.  Single page description
+        2.  Presentation to the class
+        3.  Final slide deck
+-   **No final exam**
+
+{{<newsHead>}}
+
+## Lecture 1:
+
+**Economics** is the study of how society allocates scarce resources
+
+**Natural Resource Economics** is the study of how society allocates scarce natural resources **over time**
+
+### Time (dynamics)
+
+1.  **Renewable Resource**
+
+-   any resource that grows
+-   $X_t$ = stock in biomass in time t
+-   $Y_t$ = harvest in time t
+-   $F(X_t)$ = growth in resource (notice that it is dependent on the stock)
+    -   If you have low or high amounts of fish, you're not likely to experience much growth
+-   $\mathrm{X_{t+1} = X_t + F(X_t) - Y_t}$
+
+2.  **Nonrenewable Resource**
+
+-   No growth or at least slow enough to barely notice
+-   $\mathrm{R_{t+1} = R_t - q_t}$
+-   $R_t$ = stock in time t
+-   $q_t$ = harvest or consumption in time t
+-   Notice there is no growth, so it will eventually diminish to zero
+    -   Brings up the concept of **scarcity**
+
+3.  **Stock Pollutants**
+
+-   $\mathrm{Z_{t+1}=Z_t - \gamma Z_t + \alpha q_t}$
+-   $Z_t$ = stock of pollutant in time t
+-   $\alpha q_t$ = flow of emissions in time t (basically the quantity of the good, so $\alpha$ serves to convert the units of $q_t$ to those of $Z_t$)
+-   $\gamma Z_t$ = decay of the pollutant in t ($\gamma$ is the rate, so multiplying it by $Z_t$ will convert it to total decay in time t)
+
+4.  **Optimal Allocation**
+
+-   $X_0$ = initial stock (state of resource)
+-   $Y_t$ = control variable in t (we get to choose this)
+    -   This is a control variable
+    -   $Y^{*}_{0}, Y^{*}_{1}, Y^{*}_{2}... Y^{*}_{t}$ allows us to determine the state of the resource in a given time ($X^{*}_{1}, X^{*}_{2}, X^{*}_{3}... X^{*}_{t}$)
+-   $X_t$ = stock (state of resource in time t)
+    -   This is a state variable
+-   If you complete this **optimally**, it will **satisfy some objective**
+    -   These are the asterisks next to the Y and X variables
+-   **Objective** is a very broad notion
+    -   Provides a way to think about the flows of resources that might not have to do with markets at all
+
+5.  **Steady State Equillibrium**
+
+```{r}
+steadystate <- function(X){
+  K = 50
+  r = 0.5
+  y = r*X*(1-(X/K))
+  return(tibble(X=X, Y=y))
+}
+
+X=seq(from =0, to=50)
+
+graph <- steadystate(X=X)
+
+ggplot(graph, aes(x=X, y=Y)) + 
+  geom_point() + 
+  labs(x = "X_t", y = "F(X_t)")
+
+```
+
+-   Typically to do with renewable resources
+    -   Ex. a fishery
+-   $\mathrm{X_{t+1} = X_t + F(X_t) - Y_t}$
+-   $\mathrm{F(X_t) = r X_t (1 - \frac{X_t}{K})}$
+-   $\mathrm{X_{t+1} = X_t + r X_t (1 - \frac{X_t}{K}) - \alpha X_t}$
+    -   $\alpha$ acts as a constant fraction of the stock that is harvested
+    -   \$0\< \alpha \<1 \$
+-   Suppose $\alpha = 0$, now our stock evolves according to this relationship
+    -   $\mathrm{X_{t+1} = X_t + r X_t (1 - \frac{X_t}{K})}$
+    -   $X_1 = X_0 + F(X_0)$
+    -   $X_{t + 1} = X_t + F(K)$: The resource is not growing anymore
+    -   **Where is this system in steady state?**
+        -   $X_{ss} = K$; ss = steady-state
+        -   $X_{ss} = 0$ because stock doesn't grow when it's non-existent
+-   Suppose $\alpha > 0$, now our stock evolves differently
+    -   $\alpha$ acts as the rate of harvest (extending from the origin)
+    -   Now, $\alpha X_t = Y_t$
+
+**Note there is a tension between models that are too complicated versus too simple, so it's important to make a model that is both applicable in terms of specificity to the problem but useful in that it isn't too complicated so as to be un-feasible**
+
+{{<newsHead>}}
+
+# Lecture 2: Natural Resource Economics
+
+$X_{t+1} = X_t + F(X_t) - Y_t$
+
+$X_{t+1} = X_t + rX_t (1- \frac{X_t}{K}) - \alpha Y_t$
+
+$X_{ss} = X_{ss} + F(X_{ss}) - \alpha X_{ss}$
+
+$\alpha X_{ss}[harvest] ~~ = ~~~ F(X_{ss})[growth]$
+
+-   **In homeworks, he's going to give us the parameters and the functional form, and we're going to solve it?? Or maybe we find the functional form**
+
+### Discounting
+
+-   Why?
+    -   People have preferences
+    -   Capital Markets - trade between current and future consumption
+-   Consider a zero discount rate: could you really make a decision today without any consideration or preference for near-term outcomes?
+
+$\mathrm{\delta} = \text{discount rate (4)}$
+
+$\rho = \text{discount factor} ~ \rho = \frac{1}{1 + \delta}$
+
+\$ \frac{1}{1+0.04}=0.962 \$
+
+-   Present value of \$10,000 in 10 years when $\delta$ = 0.04?
+
+$\mathrm{PV = \frac{10000}{(1+0.04)^{10}}= \rho^{10}10000} \\ = \$6756$
+
+$\mathrm{FV = 6756(1 +0.04)^{10}=10000}$
+
+-   This is why the present value would be lower in the future
+
+-   What if we have a stream of payments?
+
+$$\mathrm{PV = \sum_{i=1}^{t=T}{\rho^t N_{t}}} $$
+
+$N_t = \text{payment in year t}$
+
+\$\$ N_t = A \\
+
+T \to \infty \\
+
+PV = \frac{A(1 + \delta)}{\delta} \$\$
+
+\$\$ N_t = A \\
+
+T \to \infty \\
+
+PV = \frac{A}{\delta}\$\$
+
+-   **Continuous Compounding**
+
+**Look at this formula in the slides?**
+
+## Optimization Problems
+
+-   Dynamic Optimization
+    -   Find the "max present value", by finding a whole bunch of $Y_t$ values (control) up to infinity of the present value of some net benefit
+    -   Choose $Y_t$ to make the value of net present benefits as large as possible subject to the formula constraint below
+
+**Our Objective Function:** $$\mathrm{\sum_{t=0}^{\infty}{\rho^t \Pi (X_t,Y_t)}}$$ $\rho^t \Pi (X_t,Y_t)$ = Net benefit in year t
+
+-   Since this is subject to a constraint we must obey, let the constraint look like the growth function we had before
+
+    -   The above formula is subject to $X_{t+1} = X_t + F(X_t) - Y_t$ : So this amount of stock that is given is dependent on the stock that grows minus the stock that we harvest
+
+    -   Now the net benefit from a fishery is dependent on the stock.
+
+    -   **Why?**
+
+    -   If you leave the stock there is a benefit to it because it grows, but this is just for one given year
+
+    -   **First** reason we might have this dependence is that **cost of harvesting might vary depending on how large the stock is**
+
+    -   **Second** reason is maybe there is a value placed on the stock itself, so we care about the size of the stock; called **existence value**
+
+-   How a **constrained optimization problem** (this one) functions with a more simple example
+
+    -   Think about maximizing X through some function $\text{max}~G(X)$, first thing we do is take the derivative and set it equal to zero:
+
+$\frac{dG}{dX} = G^`(X) = 0 \to \mathrm{X=X^*}$
+
+-   Setting this equal to zero tells us where the highest point on the upside down U curve is, and maximizes the equation
+
+### Optimization problems in R
+
+-   Use a function `nloptr` to say "Find where this function reaches it's maximum" based of of an initial value.
+    -   It estimates where $Y=G(X)$ should be to maximize $X$
+    -   **One caveat** is when you have multiple peaks, you want to tell it to approach the peak from both sides (change the initial values)
+-   `nloptr` with a constraint?
+    -   $\text{max}G(X)$ subject to $X \leq 10$ where $G(X) = 5X - 0.2X^2$ when $X^* = 12.5$
+
+    -   So we can only choose starting values that are less than or equal to 10, so $X^*$ would be 10
+
+    -   What if the constraint was \$X \leq 15 \$?
+
+    -   **The constraint doesn't bind because it isn't preventing you from doing anything, it's irrelevant**
+-   When the constraint does bind, it has a "shadow value" (AKA scarcity value because a constraint makes the resource scarce) which is imposing a price on your optimization problem by preventing you from increasing your value more.
+    -   The shadow value of constraint is $\lambda$ = how much the objective function would increase if we relaxed the constraint a little bit?
+    -   In the problem above with $X \leq 10$, we would relax the constraint to 10.1, 10.2, ...
+    -   If this were a fishery model, the $\lambda$ term would tell us the value of another unit of fish in the stock. (The growth potential of that resource)
+
+### Indigenous Knowledge and how that Might Contribute to Natural Resource Knowledge
+
+-   One example is the Indigenous use of Cammis root to obtain their vitamin C rather than from citrus; this allowed them to stave off scurvy in northern territories that didn't have citrus trees growing in the wild
+    -   Sailors would eat limes and bring them on voyages to reduce scurvy (this was through experimentation as opposed to indigenous cultural knowledge)
+    -   **These two approaches are not completely separate from each other**
+
+Back to this model: $$
+\mathrm{\max_{Y_t} \sum_{t=0}^{\infty} \rho^t \Pi(X_t, Y_t)~s.t}. \\
+\mathrm{X_{t+1}=X_t + F(X_t) - Y_t ~ (X_o~given)}
+$$
+
+**Next time:** The point that while this problem is thought of in terms of money, it is much more general than that and can encompass many more ways of thinking about natural resources

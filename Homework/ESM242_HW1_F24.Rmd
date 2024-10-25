@@ -1,0 +1,313 @@
+---
+title: "ESM 242 HW 1"
+author: "Dustin Duncan"
+output: 
+  html_document:
+    code_folding: hide
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(nloptr)
+library(knitr)
+```
+
+## Question 1: Mining Reserve {.tabset}
+
+Suppose you own a mine with initial reserves $R_0$=1. You wish to determine the extraction rates, qt, that will maximize the sum of the present value of net benefits (PVNB) over a 10-year horizon t=0,1,…,9. The net benefits from extraction are given by $\pi_t=c_0q_t+c_1q_t^2$ where $c_0$=0.8 and $c_1$=-0.1. The discount rate is 0.05 and we’ll assume (at first) that any reserves left over in period 10 have a value of zero (i.e., $\lambda_{10}=0$). Find the extraction rates that maximize PVNB. You will want to constrain extraction $q_t$ to be less than $R_t$ and for remaining reserves $R_{10}$ to be nonnegative.
+
+**NOTE** $q_t$ must be subject to a constraint because the quantity you extract cannot physically be more than the quantity that exists in the mine, $R_0$=1 - This is called an inequality constraint - How do you include a constraint in R? - Write a separate function for the constraint, then use the `eval_g_ineq` option in nloptr:
+
+$$
+\text{Net benefits: }\pi_t=c_0q_t+c_1q_t^2 \\ 
+c_0 = 0.8 \\
+c_1 = -0.1 \\
+\text{Reserve value after period ten: } \lambda_{10}=0 \\
+R_{10} \geq 0 \\
+q_t \lt R_t \\
+\text{discount rate} = 0.05
+$$
+
+```{r}
+period=10
+mine_fct <- function(choice, int_state, discount, c0, c1, lambda, period){
+  
+  # The state will only be as long as the length of choice 
+  state=vector(mode="numeric", length=length(choice))
+  # The benefits will be the same 
+  benefits=vector(mode="numeric", length=length(choice))
+  
+  # Defining the initial state of the mine 
+  state[1]=int_state
+  # Defining the initial benefits of the mine 
+  benefits[1]=(c0*choice[1])+c1*(choice[1]^2)
+  
+  # looping through each year until the end of the period 
+  for(i in 2:length(choice)){
+    
+      # state evolves from previous state and choice
+      state[i]=state[i-1]-choice[i-1] 
+      
+      # benefits reflect that
+      benefits[i]=(c0*choice[i]) + c1*(choice[i]^2) 
+      
+  }
+  
+  # Describing the state at the end of the period 
+  state[period+1]=state[period]-choice[period]
+  # If anything exists after the loop above, then the amount will be multiplied by lambda (if lambda is zero then its worth nothing... otherwise its worth something)
+  benefits[period+1]= state[period+1]*lambda
+  
+  # The length of choice ends up being the year that we discount to
+  t=seq(from=0,length.out=length(benefits))
+  
+  # Defining present value 
+  pv=discount^t*benefits
+  
+  # Defining net present value 
+  npv=sum(pv)
+  
+  return(-npv)
+}
+
+
+
+constraint <- function(choice, int_state, discount, c0, c1, lambda, period){
+  # Specify the state vector for the stock and another for the constraint 
+  state=vector(mode="numeric", length=0)
+  const=vector(mode="numeric", length=0)
+  
+  # Initialize state and constraint variable; int_state is the time zero value of the state variable; see below for the definition of the constraint variable 
+  state[1]=int_state
+  const[1]=choice[1]-state[1]
+  
+  
+  for(i in 2:period){ # Loop values over the state and define constraint variable
+    
+    # Let the state evolve; this example matches the state equation for an exhaustible resource 
+    state[i]=state[i-1]-choice[i-1]
+    
+    # Define constraint variable such that it is less than or equal to zero: if const[i] is leq 0, then choice[i]-state[i] is leq 0 and choice[i] is leq state[i]
+    const[i]=choice[i]-state[i] 
+  }
+  return(const)
+}
+
+# Do the optimization 
+
+# We used period above in the loop so defining it here
+
+
+# In the nloptr command, eval_g_ineq=constraint to 
+# nloptr(...,eval_g_ineq = constraint, ...)
+```
+
+### A.
+
+What is the maximum PVNB with the initial set of parameters?
+
+[**The maximum PVNB with the initial set of parameters is 0.74.** ]{style="color: blue;"}
+
+```{r}
+
+period=10
+options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15,maxeval=16000)
+
+
+out_1a=nloptr(x0=rep(1,period),
+              eval_f=mine_fct,
+              lb=rep(0,period), # lower bound, extraction cannot be lower than 0
+              ub=rep(1,period), # upper bound, extraction cannot exceed 1 (stock)
+              opts = options,
+              int_state=1,
+              discount=1/1.05,
+              c0=0.8,
+              c1=-0.1,
+              lambda=0,
+              period=10,
+              eval_g_ineq = constraint
+              )
+
+round(out_1a$solution, 2)
+
+round(-out_1a$objective, 2)
+```
+
+### B.
+
+How does the PVNB change when you assume that reserves left over in period 10 have a per unit value of $\lambda_{10}$=1.2? How do the optimal values of $q_t$ compare to those in part a? Explain.
+
+[**If the reserves left over in period 10 have a per unit value of 1.2, the optimal harvest values over time are lower for the first two years, and the reserves are not exhausted. This is due to the fact that any resources left over now have value. So to maximize the combined value of harvested resources as well as leftover resources, you would harvest less for the first two years and sell the rest at a per unit value. This is the case because if you harvested for longer the discount factor would decrease the overall value of both the last years harvest as well as the leftover resources in the last year. ** ]{style="color: blue;"}
+
+```{r}
+period=10
+options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15,maxeval=16000)
+
+
+out_1b=nloptr(x0=rep(1,period),
+              eval_f=mine_fct,
+              lb=rep(0,period), # lower bound, extraction cannot be lower than 0
+              ub=rep(1,period), # upper bound, extraction cannot exceed 1 (stock)
+              opts = options,
+              int_state=1,
+              discount=1/1.05,
+              c0=0.8,
+              c1=-0.1,
+              lambda=1.2,
+              period=10,
+              eval_g_ineq = constraint
+              )
+
+sol_2b=round(out_1b$solution, 2)
+
+obj_2b=round(-out_1b$objective, 2)
+
+sol_2b
+obj_2b
+
+```
+
+### C.
+
+What is the PVNB when $\lambda_{10}=1.4$ How do the optimal values of $q_t$ compare to those in part a? Explain.
+
+[**When the per unit value of leftover resources is 1.4, the optimal scenario is to harvest very small amounts of resources over the entire 10 year period and sell what is left over at the end of 10 years. This is once again due to the discounting factor, which reduces the value of harvested resources in later years, although the value of what is left over at the end of ten years outweighs the benefits of harvesting larger amounts, as seen with the previous two examples.** ]{style="color: blue;"}
+
+```{r}
+period=10
+options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15,maxeval=16000)
+
+
+out_1c=nloptr(x0=rep(1,period),
+              eval_f=mine_fct,
+              lb=rep(0,period), # lower bound, extraction cannot be lower than 0
+              ub=rep(1,period), # upper bound, extraction cannot exceed 1 (stock)
+              opts = options,
+              int_state=1,
+              discount=1/1.05,
+              c0=0.8,
+              c1=-0.1,
+              lambda=1.4,
+              period=10,
+              eval_g_ineq = constraint
+              )
+
+sol_2c=round(out_1c$solution, 2)
+
+obj_2c=round(-out_1c$objective, 2)
+
+sol_2c
+obj_2c
+
+
+```
+
+### D.
+
+Even without using R, you could reason that the PVNB must be at least as large in parts b and c compared to part a. Explain.
+
+[**The PVNB must be at least as large in parts b and c because the value of the combined harvested resources and leftover resources is higher. However the lost revenue from harvesting is more important when the leftover resources are worth a per unit value, because the miner is not incentivized to continue harvesting past a certain point when the cost of harvesting outweighs the value of the leftover resources.** ]{style="color: blue;"}
+
+### E.
+
+Now set $\lambda_{10}$ back to 0 and set $c_1$=0. Resolve and explain what happens to the optimal values of $q_t$ compare to those in part a.
+
+[**The optimal values of q_t change to reflect that there is no lost revenue form harvesting resources, and any leftover resources also have no value. As a result, to maximize PVNB with the discounting factor, the optimal solution is to harvest all resources in year 1 to minimize value lost from discounting.** ]{style="color: blue;"}
+
+```{r}
+period=10
+options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15,maxeval=16000)
+
+
+out_1e=nloptr(x0=rep(1,period),
+              eval_f=mine_fct,
+              lb=rep(0,period), # lower bound, extraction cannot be lower than 0
+              ub=rep(1,period), # upper bound, extraction cannot exceed 1 (stock)
+              opts = options,
+              int_state=1,
+              discount=1/1.05,
+              c0=0.8,
+              c1=0,
+              lambda=0,
+              period=10,
+              eval_g_ineq = constraint
+              )
+
+sol_1e=round(out_1e$solution, 2)
+
+obj_1e=round(-out_1e$objective, 2)
+
+sol_1e
+obj_1e
+
+```
+
+## Question 2: Forest rotation with alternative land use {.tabset}
+
+As in the example problem, we seek to select the optimal harvest age $T^*$ for an even-aged forest to maximize the present discounted value of profits from a single rotation. The timber yield is given by $Q(T)=e^{a-b/T}$, where $a=10, b=53.27$, the cost of planting the stand is $c=300$, the price of a unit of timber is $p=1$, and the discount rate is $\delta=0.05$. As a variation on this problem, suppose that following the timber harvest in year $T^*$, the land can be sold for some amount $P_L$, which we will initially set equal to $\$600$.
+
+### A.
+
+How will the formula for the present value of net benefits (PVNB) have to change to reflect the value of selling the land at the end of the rotation?
+
+[**The formula for PVNB in this context would change to include an additional positive constant of 600, which regardless of the harvest age, would be capitalized on after harvest.** ]{style="color: blue;"}
+
+### B.
+
+What is the optimal rotation $T^*$ with $P_L=\$600$? How does it compare to the original answer with $P_L=0$? Explain the difference. Hint: the solution when $P_L=\$600$ may be sensitive to the starting value in nloptr, so make sure to check alternative values.
+
+[**The optimal rotation with the additional selling price of $600 is 30.33603 years. This is shorter than the rotation calculated without the selling price, because the additional benefit of the sale indicates that the timber yield doesn't need to be as high for a given rotation. If one were to wait too long, the value of the land would be lower due to discounting, indicating that it would be more valuable to harvest earlier.** ]{style="color: blue;"}
+
+```{r}
+
+obj_harv_fct <- function(choice, a, b, p, c, discount) {
+  
+  Q=exp(a-b/choice)
+  benefits=p*Q*exp(-discount*choice)-c+(600*exp(-discount*choice))
+  
+  return(-benefits)
+}
+
+options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-8,maxeval=16000)
+
+
+out_2b=nloptr(x0=15,
+              eval_f=obj_harv_fct,
+              opts = options,
+              lb=0,
+              a=10, 
+              b=53.27,
+              p=1,
+              c=300,
+              discount=0.05)
+
+cat("The optimal age for harvest is:", out_2b$solution)
+```
+
+### C.
+
+For the case of $P_L=\$600$, how does the optimal rotation length change when the price of timber is raised from $p=1$ to $p=2$? Explain your result, and how it compares (or contrasts) to your finding in part b.
+
+[**Now that the price of timber is increased, the optimal rotation period is longer than that of part B because allowing the timber to grow for slightly longer would increase the PVNB of timber sold, which outweighs the lost value from the discounted land sale.** ]{style="color: blue;"}
+
+```{r}
+options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-8,maxeval=16000)
+
+
+out_2c=nloptr(x0=15,
+              eval_f=obj_harv_fct,
+              opts = options,
+              lb=0,
+              a=10, 
+              b=53.27,
+              p=2,
+              c=300,
+              discount=0.05)
+
+cat("The optimal age for harvest is:", out_2c$solution)
+```
