@@ -1,0 +1,175 @@
+---
+title: "Week 5 Lecture Notes"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+## Week 5 Lecture Notes 
+
+### Non-renewable Resources 
+
+- **Non-renewable resources:** resources > reserves
+- **Exhaustible Resources:** resources = reserves 
+- **Resources:** total physical quantity 
+- **Reserves:** the resources known about and economical to extract 
+
+### Model of exhaustible resource use 
+
+**Hotelling (1931)**
+
+- 1. Imagine a competitive industry of resource extractors who maximize the present value of profits 
+- 2. A homogenous resource - easy to change assumption
+- 3. Costless extraction - easy to change this assumption
+- 4. A common discount rate $\delta$
+- 5. Perfect foresight - Difficult to change assumption because you're introducing the uncertainty rather than assuming certainty with perfect foresight 
+
+These are all very strong assumptions, and have been tested afterwards with different values for the assumptions 2-6
+
+He says: 
+
+- In market equilibrium, prices should grow at rate $\delta$, so:
+
+$$
+\mathrm{\frac{P_{t+1}-P_{t}}{P_{t}}= \delta \leftarrow \text{Hotelling's Rule} \\
+ F~'(X^{*})= \delta }
+$$
+
+Why should Hotelling's rule hold in an industry that meets the previous assumptions? 
+
+**Imagine a firm decides whether to extract one unit today in time t or tomorrow in time t+1**
+
+If the answer is today, you would take one unit out of the ground and sell it for $P_{t}$ and invest it such that the interest rate creates a future value $FV_{t+1}$:
+
+$$
+\mathrm{FV_{t+1}=P_{t}(1+\delta)}
+$$
+
+If tomorrow, future value is:
+
+$$
+\mathrm{FV_{t+1}=P_{t+1}}
+$$
+
+**As long as everyone has the same time preference, delta can be interpreted as the return in a capital market (how we used it in this case) or time preference (how we typically use it)**
+
+If everyone is thinking extraction today is better than extraction tomorrow, then we would think: $P_{t}(1+\delta) \gt P_{t+1}$, BUT there would be downward pressure on prices because there would be lots of extraction today, pushing the price today down
+
+If instead they thought that $P_{t}(1+\delta) \lt P_{t+1}$, then there would be upward pressure on the prices today, pushing it up 
+
+Competitive forces should push us to a point of equilibrium where $P_{t}(1+\delta) = P_{t+1}$ which can be written as:
+
+$$
+\mathrm{P_{t}(1+\delta) = P_{t+1} \\ = \\
+P_{t}+P_{t}\delta=P_{t+1} \\ = \\ 
+\delta = \frac{P_{t+1}-P_{t}}{P_t} \leftarrow \text{Hotelling's Rule}}
+$$
+
+### Component 1: 
+
+If prices follow $P_{t}=P_{0}(1+\delta)^{t}$, then we could plot our prices and our quantities. So we could plot $P_{0}$ and multiply it by $(1+\delta)$ to obtain $P_{1}$ (because t would be 1 in the above formula)
+
+So lets suppose we have:
+
+- $R_{0}$ = the initial stock of reserves
+- $T$ = last year in which extraction occurs 
+
+**We would not have any resources left in this scenario, because thinking about it from the firms perspective, if prices are going up you would want to extract those last units because prices are very high and they are trying to maximize profit**
+
+So this indicates that:
+
+### Component 2:
+
+$$
+\mathrm{\sum_{t=0}^{t=T}q_{t}= R_{0}}
+$$
+
+So the final quantity sale price is called the **Choke Price, "a"** 
+
+If $P_{T}$ is the price when **extraction ceases** is equal to a: $P_{T}=a$
+
+So if you are a firm controlling the price, why would you not shift the prices up for $q_{T} \rightarrow q_{0}$ to the point where $P'_{T}=a$, on the graph: $q'_{0} \lt q_{0}$ and $P'_{0} \gt P_{0}$ in a manner that shifts $P_{T} \rightarrow P'_{T}=a$
+
+```{r}
+library(tidyverse)
+graph = tibble(P=seq(from=0,to=100), q=(100 - 0.5*P))
+
+ggplot(graph, aes(x=q, y=P)) + 
+  geom_point() +
+  geom_segment(aes(x=90, xend=90, y=0, yend=23, color = "red"), linetype="dashed") +
+  geom_segment(aes(x=50, xend=90, y=023, yend=23, color = "red"), linetype="dashed") +
+  geom_segment(aes(x=80, xend=80, y=0, yend=40, color = "red"), linetype="dashed") +
+  geom_segment(aes(x=50, xend=80, y=40, yend=40, color = "red"), linetype="dashed") +
+  geom_segment(aes(x=70, xend=70, y=0, yend=60, color = "red"), linetype="dashed") +
+  geom_segment(aes(x=50, xend=70, y=60, yend=60, color = "red"), linetype="dashed") +
+  geom_text(aes(x= 90, y = 5, label="q_0")) +
+  geom_text(aes(x= 80, y = 5, label="q'_0")) +
+  geom_text(aes(x= 70, y = 5, label="q_T")) +
+  geom_text(aes(x= 50, y = 90, label="P'_T=a")) +
+  geom_text(aes(x= 50, y = 57, label="P_T")) +
+  geom_text(aes(x= 50, y = 37, label="P'_0")) +
+  geom_text(aes(x= 50, y = 22, label="P_0")) + 
+  theme(legend.position="none")
+```
+
+
+This also implies that if $q_{0} \gt q_{T}$ on the y axis and time moves from $0 \rightarrow T$ on the x axis, then the area under the curve (quarter of a pie shape) then the area under the curve is $R_{0}$ 
+
+**See four quadrant graph in notebook and figure out how to graph it for following notes** 
+
+1. What happens to GHG emissions when you switch from a conventional car to an electric car?
+
+- Let's suppose you now buy 500 fewer gallons of gas per year 
+- and that translates into 500 units of CO2 "saved"
+
+```{r}
+# q=(100 - 0.5*P)
+fourquadrant <- tibble(P=seq(from=-100,to=100)) %>% 
+  mutate(q = ifelse(P >= 0, (-100+1*P), (-100+(P/10)^2)),
+         t = ifelse(P >= 0, ((log((P+48.019)/30.019))/log(1.05)), (0-1*P))
+  )
+
+ggplot(fourquadrant) + 
+  geom_point(aes(x = q, y = P)) + 
+  geom_point(aes(x=t, y=P)) +
+  xlim(-100, 100) + 
+  ylim(-100, 100)
+```
+
+
+
+2. Green Paradox
+
+**End notebook**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -306,7 +306,5 @@ f = data.frame(a = round((-out_1a$objective), 3), c = round((-out_1c$objective),
          `Solution C` = c,
          `Solution D` = d)
 knitr::kable(f, align = 'c')
-
-
 ```
 

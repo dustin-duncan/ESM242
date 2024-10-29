@@ -40,7 +40,7 @@ $$
 So the present discounted value of $\Pi_{\infty}$ would be equal to: 
 
 $$
-\mathrm{\Pi_{\infty}=pQ(T_{\infty})e^{-\delta T_{\infty}}-c + \Pi_{\infty}e^{-\delta T_{\infty}}}
+\mathrm{\Pi_{\infty}=pQ(T_{\infty})e^{-\delta T_{\infty}}-c + T_{1}e^{-\delta T_{\infty}}}
 $$
 now we can rearrange it to be: 
 

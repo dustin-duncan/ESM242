@@ -81,13 +81,14 @@ $$
 
 forest_fct <- function(choice, c, p, a, b, discount) {
   
-  Q=exp((a-b)/choice)
+  Q=exp(a-b/choice)
   benefits=p*Q*exp(-discount*choice) - c
   return(-benefits)
 }
 
 options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-8,maxeval=16000)
 
+# Use the parameter values a=10, b=53.27, c=250, p=1.5, and $\delta$=0.05
 out_1a=nloptr(x0=1,
               eval_f=forest_fct,
               opts=options,
@@ -96,10 +97,11 @@ out_1a=nloptr(x0=1,
               b=53.27,
               c=250,
               p=1.5,
-              discount=1/1.05
+              discount=.05
               )
+
 out_1a$solution
-out_1a$objective
+-out_1a$objective
 
 ```
 
@@ -112,28 +114,32 @@ Now solve the problem for six consecutive rotations.  What are the six rotation 
 </span>
 
 
-
 ```{r}
 
 forest_b <- function(choice, a, b, c, p, discount, period) {
   
+  ## initiating vectors for state, benefits, and quantity harvested 
   state=vector(mode="numeric", length=0)
   benefits=vector(mode="numeric", length=0)
   Q=vector(mode="numeric", length=0)
   
+  # state[1]=choice[1] # Choice 1 is the first state. Length of first rotation
+  Q[1]=exp(a-b/choice[1]) # Quantity harvested at t1 depends on length of first rotation
+  benefits[1]=p*Q[1]*exp(-discount*choice[1])-c # benefits discounted to choice of length of time for 1st rotation 
   state[1]=choice[1]
-  Q[1]=exp(a-b/choice[1])
-  benefits[1]=p*Q[1]*exp(-discount*state[1])
     
   for(i in 2:period){
-    state[i]=state[i-1] + choice[i]
-    Q[i]=exp(a-b/choice[i])
-    benefits[i]=p*Q[i]*exp(-discount*state[i])
+    
+    state[i]=state[i-1] + choice[i] # State in this case is the total time passed
+    
+    Q[i]=exp(a-b/choice[i]) # Quantity harvested depends on this time choice
+    # option for c: c*exp(-discount*state[i-1]))
+    benefits[i]=p*Q[i]*exp(-discount*state[i]) - c*exp(-discount*state[i-1])
+    # /(1-exp(-discount*state[i])) 
+    # Benefits are discounted to current total time passed (state[i]), and costs are discounted to the time passed when costs were incurred, which is state[i-1]
   }
   
-  pv=discount^state[i]*benefits[i] 
-  
-  npv=sum(pv)
+  npv=sum(benefits)
   
   return(-npv)
 }
@@ -142,7 +148,9 @@ forest_b <- function(choice, a, b, c, p, discount, period) {
 options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-8,maxeval=16000)
 
 period=6
-out_1b=nloptr(x0=rep(1, period),
+
+# Use the parameter values a=10, b=53.27, c=250, p=1.5, and $\delta$=0.05
+out_1b=nloptr(x0=rep(20, period),
               eval_f=forest_b,
               opts=options,
               lb=rep(0, period),
@@ -155,6 +163,7 @@ out_1b=nloptr(x0=rep(1, period),
               )
 
 out_1b$solution
+-out_1b$objective
 
 ```
 
@@ -179,6 +188,21 @@ What happens to $T_1$ through $T_5$ when the cost of replanting the stand increa
 ```{r}
 
 options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-8,maxeval=16000)
+
+out_1d=nloptr(x0=rep(20, period),
+              eval_f=forest_b,
+              opts=options,
+              lb=rep(0, period),
+              a=10,
+              b=53.27,
+              c=500,
+              p=1.5,
+              period=6,
+              discount=0.05
+              )
+out_1b$solution
+out_1d$solution
+-out_1d$objective
 
 ```
 
@@ -207,11 +231,31 @@ Compare your answer to part a (the single rotation) to $T_6$. Why are they the s
 
 ### F
 
-Now solve for the optimal rotation when an infinite number of rotations are done.  Compute the present value of net revenues (i.e., $objective).  Compare this to the present value of net revenues when only six rotations are done.  Are they close in magnitude?  Why?
+Now solve for the optimal rotation when an infinite number of rotations are done.  Compute the present value of net revenues (i.e., $objective). Compare this to the present value of net revenues when only six rotations are done. Are they close in magnitude?  Why?
 
 ```{r}
 
+inft_fct = function(choice, a, b, c, p, discount) {
+  
+  Q=exp(a-b/choice)
+  benefits=(p*Q*exp(-discount*choice)-c)/(1-exp(-discount*choice))
+  
+  return(-benefits)
+}
 options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-8,maxeval=16000)
+
+out_1f=nloptr(x0=20,
+              eval_f=inft_fct,
+              opts=options,
+              lb=0,
+              a=10,
+              b=53.27,
+              c=250,
+              p=1.5,
+              discount=0.05
+              )
+out_1f$solution
+-out_1f$objective
 
 ```
 
@@ -246,10 +290,28 @@ If the stand is grown for an infinite number of rotations, what is the optimal r
 
 ```{r}
 
-
+inft_fct2 <- function(choice, int_age, a, b, c, p, discount) {
+  
+  Q=exp(a-b/(choice+int_age))
+  benefits=(p*Q*exp(-discount*(choice))-c)/(1-exp(-discount*(choice)))
+  
+  return(-benefits)
+}
 
 options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15,maxeval=16000)
 
+out_2a=nloptr(x0=1, 
+              eval_f=inft_fct2,
+              opts=options,
+              lb=0,
+              a=13,
+              b=185,
+              c=1000,
+              p=1.78,
+              discount=0.05,
+              int_age=0)
+out_2a$solution
+-out_2a$objective
 
 ```
 
@@ -257,7 +319,14 @@ options=list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15,maxeval=16000)
 
 ### B.
 
-Suppose that the initial age of the stand is A and $T_1$ is the additional number of years the stand is grown until harvest.  Then, $A+T_1$ is the age of the stand at the end of the first rotation. Assuming the first rotation is followed by an infinite number of rotations, write an expression for present discounted value of net timber revenues from an infinite number of rotations (including the first one).
+Suppose that the initial age of the stand is A and $T_1$ is the additional number of years the stand is grown until harvest. Then, $A+T_1$ is the age of the stand at the end of the first rotation. Assuming the first rotation is followed by an infinite number of rotations, write an expression for present discounted value of net timber revenues from an infinite number of rotations (including the first one).
+
+$$
+\mathrm{Q(T_{1})=e^{a-b/T_{1}+A} \\ 
+\Pi_{1}=pQ(T_{1})^{-\delta T_{1}} \\ 
+\Pi_{\infty}=\frac{pQ(T_{\infty})e^{-\delta T_{\infty}}-c}{1-e^{-\delta T_{\infty}}}}
+$$
+
 
 <span style="color: blue;">**Solution**</span>
 
@@ -276,6 +345,68 @@ Using your formula in b, and assuming A=30, what is the optimal value of $T_1$? 
 
 ```{r}
 
+fct_2c <- function(choice, int_age, a, b, c, p, discount) {
+  
+  Q=exp(a-b/(choice+int_age))
+  # b1=(p*Q*exp(-discount*(choice))-c)/(1-exp(-discount*(choice)))
+  benefits=(p*Q*exp(-discount*choice)-c) + choice*(1-exp(-discount*choice))
+  
+  return(-benefits)
+}
+
+
+
+out_2c = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=30,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+out_2c$solution
+-out_2c$objective
+
+out_2c2 = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=40,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+out_2c2$solution
+-out_2c2$objective
+
+out_2c3 = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=60.14,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+out_2c3$solution
+-out_2c3$objective
+
+out_2c4 = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=90,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+out_2c4$solution
+-out_2c4$objective
 
 
 ```
@@ -283,6 +414,8 @@ Using your formula in b, and assuming A=30, what is the optimal value of $T_1$? 
 ### D.
 
 What do you notice about $A+T_1$?  Explain.
+
+When t_1 is determined with A=0, it states that the optimal rotation length is 60.13
 
 <span style="color: blue;">**Solution**</span>
 
