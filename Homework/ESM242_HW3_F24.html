@@ -448,62 +448,6 @@ display: none;
 <pre class="r"><code>library(tidyverse)
 library(nloptr)
 library(knitr)</code></pre>
-<p><strong>Notes from class</strong></p>
-<div id="question-1" class="section level2">
-<h2>Question 1:</h2>
-<ul>
-<li>First problem looks at solving forest rotation for one rotation and
-for an inifinite number of rotations
-<ul>
-<li>What about something in between? Like here if you grew your stand
-for six different rotations
-<ul>
-<li>rotation length are not going to be equal to each other (need 6
-values that you’re choosing)</li>
-<li>The key to this problem is to keep track of time, and to get the
-discounting happening at the right times</li>
-<li>What you have to think about:</li>
-</ul></li>
-</ul></li>
-</ul>
-<p>IF we were to write a timeline</p>
-<p>t0, t1 = end of first rotation, t1 t2 = t1 + t2 t3 = t1 + t2 + t3 t4
-= t1 + t2 + t3 + t4<br />
-t5 = t1 + t2 + t3 + t4 + t5 t6 = t1 + t2 + t3 + t4 + t5 + t6</p>
-<p>When do the costs occur??</p>
-<ul>
-<li>They would occur in t0, up to t5, because you aren’t planting after
-the sixth rotation</li>
-</ul>
-<p>When do the revenues occur?</p>
-<ul>
-<li>They would occur in t1 <span class="math inline">\(pQ(T_{1})\)</span>, t2 <span class="math inline">\(pQ(T_{2})\)</span>, t3 <span class="math inline">\(pQ(T_{3})\)</span>, t4 <span class="math inline">\(pQ(T_{4})\)</span>, t5 <span class="math inline">\(pQ(T_{5})\)</span>, t6 <span class="math inline">\(pQ(T_{6})\)</span></li>
-</ul>
-<p>So now looking at revenues…</p>
-<ul>
-<li>We have to add up revenues and costs from the revenue and cost
-stream in such a way that profits are added up but discounted
-appropriately</li>
-</ul>
-<p>Andrew suggests that your choices are going to be the amount of time
-in between rotations, like choice[1], choice[2], choice[3], and
-state[1]=choice[1], state[2]=state[1]+choice[2],
-state[3]=state[2]+choice[3]</p>
-<ul>
-<li>The trick is to identify how much total time has passed so that you
-discount it appropriately
-<ul>
-<li>The discounting term is going to depend on the choices that were
-made to maximize PVNB</li>
-<li>For example:</li>
-</ul></li>
-</ul>
-<pre class="r"><code>for(i in 2:6) { 
-  state[i]=state[i-1]+choice[i] # Because the state[i-1] in this case is choice[i-1]
-  benefits[i]=p*Q(choice[i])*exp(-discount*state[i])-c*exp(-discount*state[i-1])
-  # The benefits in state i are a function of the price you get for timber*the quantity of timber for your choice in time i, discounted by the total time that has passed (state[i]), minus the cost associated with state[i-1], which is the second term in the equation
-  }</code></pre>
-</div>
 <div id="question-1-forestry-rotation" class="section level2 tabset">
 <h2 class="tabset">Question 1: Forestry Rotation</h2>
 <p>This problem expands on the forest rotation problem presented in
@@ -521,27 +465,106 @@ p=1.5, and <span class="math inline">\(\delta\)</span>=0.05.</p>
 <p>Before you solve the problem for six rotations, find the optimal
 rotation when only one rotation is done. What is the optimal value of
 <span class="math inline">\(T_1\)</span>?</p>
+<p><span style="color: blue;"><strong>The optimal rotation length when
+only one rotation is done is 32.64</strong> </span></p>
 <p><span class="math display">\[
-\begin{align}
 \mathrm{ Q(T)=e^{a-b/T} \\
 \max_{T_1} ~\Pi_{1}=pQ(T_{1})e^{-\delta T_{1}}-c}
-\end{align}
 \]</span></p>
-<pre class="r"><code>forest_fct &lt;- function(choice, q, c, p, discount)
+<pre class="r"><code>forest_fct &lt;- function(choice, c, p, a, b, discount) {
+  
+  Q=exp(a-b/choice)
+  benefits=p*Q*exp(-discount*choice) - c
+  return(-benefits)
+}
 
-options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)</code></pre>
+options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)
+
+# Use the parameter values a=10, b=53.27, c=250, p=1.5, and $\delta$=0.05
+out_1a=nloptr(x0=1,
+              eval_f=forest_fct,
+              opts=options,
+              lb=0,
+              a=10,
+              b=53.27,
+              c=250,
+              p=1.5,
+              discount=.05
+              )
+
+out_1a$solution</code></pre>
+<pre><code>## [1] 32.64047</code></pre>
+<pre class="r"><code>-out_1a$objective</code></pre>
+<pre><code>## [1] 1013.219</code></pre>
 </div>
 <div id="b." class="section level3">
 <h3>B.</h3>
 <p>Now solve the problem for six consecutive rotations. What are the six
 rotation lengths that you found?</p>
-<p><span style="color: blue;"><strong>Solution</strong> </span></p>
-<pre class="r"><code>options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)</code></pre>
+<p><span style="color: blue;"><strong>The six rotation lengths that were
+found when 6 rotations are done are: 29.32, 29.32, 29.35, 29.48, 30.04,
+and 32.65.</strong> </span></p>
+<pre class="r"><code>forest_b &lt;- function(choice, a, b, c, p, discount, period) {
+  
+  ## initiating vectors for state, benefits, and quantity harvested 
+  state=vector(mode=&quot;numeric&quot;, length=0)
+  benefits=vector(mode=&quot;numeric&quot;, length=0)
+  Q=vector(mode=&quot;numeric&quot;, length=0)
+  
+  # state[1]=choice[1] # Choice 1 is the first state. Length of first rotation
+  Q[1]=exp(a-b/choice[1]) # Quantity harvested at t1 depends on length of first rotation
+  benefits[1]=p*Q[1]*exp(-discount*choice[1])-c # benefits discounted to choice of length of time for 1st rotation 
+  state[1]=choice[1]
+    
+  for(i in 2:period){
+    
+    state[i]=state[i-1] + choice[i] # State in this case is the total time passed
+    
+    Q[i]=exp(a-b/choice[i]) # Quantity harvested depends on this time choice
+    # option for c: c*exp(-discount*state[i-1]))
+    benefits[i]=p*Q[i]*exp(-discount*state[i]) - c*exp(-discount*state[i-1])
+    # /(1-exp(-discount*state[i])) 
+    # Benefits are discounted to current total time passed (state[i]), and costs are discounted to the time passed when costs were incurred, which is state[i-1]
+  }
+  
+  npv=sum(benefits)
+  
+  return(-npv)
+}
+
+
+options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)
+
+period=6
+
+# Use the parameter values a=10, b=53.27, c=250, p=1.5, and $\delta$=0.05
+out_1b=nloptr(x0=rep(20, period),
+              eval_f=forest_b,
+              opts=options,
+              lb=rep(0, period),
+              a=10,
+              b=53.27,
+              c=250,
+              p=1.5,
+              period=6,
+              discount=0.05
+              )
+
+cat(&quot;The optimal rotation lengths when six rotations are done are:\n &quot;,round(out_1b$solution, 2), &quot;\n&quot;)</code></pre>
+<pre><code>## The optimal rotation lengths when six rotations are done are:
+##   29.32 29.32 29.35 29.48 30.04 32.65</code></pre>
+<pre class="r"><code>cat(&quot;The Present value of six consecutive rotations is:&quot;,round(-out_1b$objective, 2))</code></pre>
+<pre><code>## The Present value of six consecutive rotations is: 1286.55</code></pre>
 </div>
 <div id="c." class="section level3">
 <h3>C.</h3>
 <p>Explain why <span class="math inline">\(T_1\)</span> through <span class="math inline">\(T_5\)</span> are shorter than <span class="math inline">\(T_6\)</span>?</p>
-<p><span style="color: blue;"><strong>Solution</strong> </span></p>
+<p><span style="color: blue;"><strong>T_6 is the longest rotation length
+because there are no costs associated with replanting after the 6th
+rotation. As a result, the first five rotations are shorter due to costs
+associated with replanting, and the discounted benefits associated with
+their lengths; so shortening the rotation length compared to period six
+increases their net present benefits.</strong> </span></p>
 <p><span style="color: blue;"></p>
 <p></span></p>
 </div>
@@ -551,17 +574,44 @@ rotation lengths that you found?</p>
 <span class="math inline">\(T_5\)</span> when the cost of replanting the
 stand increases to 500? Explain. Why doesn’t <span class="math inline">\(T_6\)</span> change with the higher replanting
 cost?</p>
-<pre class="r"><code>options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)</code></pre>
-<p><span style="color: blue;"><strong>Solution</strong> </span></p>
+<pre class="r"><code>options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)
+
+out_1d=nloptr(x0=rep(20, period),
+              eval_f=forest_b,
+              opts=options,
+              lb=rep(0, period),
+              a=10,
+              b=53.27,
+              c=500,
+              p=1.5,
+              period=6,
+              discount=0.05
+              )
+cat(&quot;The optimal rotation lengths for six rotations when the cost of replanting \n is $500 are:&quot;, round(out_1d$solution, 2), &quot;\n Compared to when the cost was $250:&quot;, round(out_1b$solution, 2), &quot;\n&quot;)</code></pre>
+<pre><code>## The optimal rotation lengths for six rotations when the cost of replanting 
+##  is $500 are: 30.17 30.18 30.19 30.28 30.69 32.66 
+##  Compared to when the cost was $250: 29.32 29.32 29.35 29.48 30.04 32.65</code></pre>
+<pre class="r"><code>cat(&quot;The net present value of benefits for six rotations when the cost of replanting \n is $500 is:&quot;, round(-out_1d$objective, 2))</code></pre>
+<pre><code>## The net present value of benefits for six rotations when the cost of replanting 
+##  is $500 is: 963.62</code></pre>
+<p><span style="color: blue;"><strong>When the cost of replanting is
+increased to 500, increasing the rotation length allows for the
+additional benefits from the timber harvest to counteract the increased
+costs of replanting. Because there are still no costs associated with
+replanting at the end of the sixth rotation, the increased cost would
+have no effect on its optimal rotation length.</strong> </span></p>
 <p><span style="color: blue;"></p>
 <p></span></p>
 </div>
 <div id="e." class="section level3">
 <h3>E.</h3>
 <p>Compare your answer to part a (the single rotation) to <span class="math inline">\(T_6\)</span>. Why are they the same?</p>
-<p><span style="color: blue;"><strong>Solution</strong> </span></p>
-<p><span style="color: blue;"></p>
-<p></span></p>
+<p><span style="color: blue;"><strong>The optimal rotation length for a
+single rotation is the same as the sixth rotation length when there are
+six rotations done. This is due to the costs of replanting not playing a
+factor in either scenario and both scenario’s rotation lengths being
+optimized independently, so discounting of benefits of the harvest leads
+to both optimal rotation lengths being 32.65 years.</strong> </span></p>
 </div>
 <div id="f" class="section level3">
 <h3>F</h3>
@@ -569,40 +619,41 @@ cost?</p>
 rotations are done. Compute the present value of net revenues (i.e.,
 $objective). Compare this to the present value of net revenues when only
 six rotations are done. Are they close in magnitude? Why?</p>
-<pre class="r"><code>options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)</code></pre>
+<p><span style="color: blue;"><strong>The present value of net revenues
+when an infinite number of rotations are done is within 1 unit
+difference from the present value of net revenues when 6 rotations are
+done due to the discounting factor. The two values being similar implies
+that there is very small value added after the sixth rotation in the
+infinite rotation scenario due to the discount factor’s effect over
+longer time periods.</strong></span></p>
+<pre class="r"><code>inft_fct = function(choice, a, b, c, p, discount) {
+  
+  Q=exp(a-b/choice)
+  benefits=(p*Q*exp(-discount*choice)-c)/(1-exp(-discount*choice))
+  
+  return(-benefits)
+}
+options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-8,maxeval=16000)
+
+out_1f=nloptr(x0=20,
+              eval_f=inft_fct,
+              opts=options,
+              lb=0,
+              a=10,
+              b=53.27,
+              c=250,
+              p=1.5,
+              discount=0.05
+              )
+cat(&quot;The optimal rotation length for infinite rotations is:&quot;,round(out_1f$solution, 2), &quot;\n&quot;)</code></pre>
+<pre><code>## The optimal rotation length for infinite rotations is: 29.32</code></pre>
+<pre class="r"><code>cat(&quot;The net present value of six rotations was: &quot;, round(-out_1b$objective, 2), &quot;\n&quot;, &quot;and the net present value of infinite rotations is:&quot;, round(-out_1f$objective, 2))</code></pre>
+<pre><code>## The net present value of six rotations was:  1286.55 
+##  and the net present value of infinite rotations is: 1286.73</code></pre>
 </div>
 </div>
 <div id="question-2-varying-initial-age" class="section level2 tabset">
 <h2 class="tabset">Question 2: Varying Initial Age</h2>
-</div>
-<div id="question-2" class="section level2">
-<h2>Question 2</h2>
-<ul>
-<li>Start with your trees of age a, decide how long to grow the first
-rotation, which will be followed by an infinite number of rotations</li>
-</ul>
-<p>A = initial age t1 = time until first harvest Age at first harvest =
-A + t1 Volume at first harvest = Q(A+t1)</p>
-<ul>
-<li>How do you write the present value of an infinite number of
-rotations when the first rotation is going to give you that first volume
-<ul>
-<li>The only thing you need to choose is the first time interval,
-t1</li>
-</ul></li>
-<li>What about all the other rotations that occur after that?
-<ul>
-<li>in A we solve for T* when the initial age is zero, and call that
-solution <span class="math inline">\(\Pi_{\infty}\)</span></li>
-<li>And <span class="math inline">\(\Pi_{\infty}\)</span> is the present
-value of an infinite number of rotations starting at age 0</li>
-<li>So now in the problem where we have an initial age, you decide t1
-and then do an infinite number of rotations where each subsequent
-rotation starts with a biomass value of 0</li>
-<li>When you finish part a and go to the nonzero initial age, the only
-thing you need to choose is t1</li>
-</ul></li>
-</ul>
 <p>In this problem, you are asked to find the optimal rotation when the
 initial age of the stand is not zero. The key question is whether a
 positive initial age should change the solution. That is, if T* is the
@@ -619,8 +670,34 @@ the optimal rotation length when the initial age of the stand is zero?
 Call this value <span class="math inline">\(T^*\)</span>. What is the
 present discounted value of net timber revenues from an infinite number
 of rotations? Call this value <span class="math inline">\(\pi_\infty\)</span>.</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
-<pre class="r"><code>options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-15,maxeval=16000)</code></pre>
+<p><span style="color: blue;"><strong>The optimal rotation length for
+infinite rotations when the initial age of the stand is zero is 60.14,
+and the net present value of benefits is 837.67</strong></span></p>
+<pre class="r"><code>inft_fct2 &lt;- function(choice, int_age, a, b, c, p, discount) {
+  
+  Q=exp(a-b/(choice+int_age))
+  benefits=(p*Q*exp(-discount*(choice))-c)/(1-exp(-discount*(choice)))
+  
+  return(-benefits)
+}
+
+options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-15,maxeval=16000)
+
+out_2a=nloptr(x0=1, 
+              eval_f=inft_fct2,
+              opts=options,
+              lb=0,
+              a=13,
+              b=185,
+              c=1000,
+              p=1.78,
+              discount=0.05,
+              int_age=0)
+cat(&quot;The optimal rotation length for infinite rotations when the initial \n age of the stand is zero is: &quot;,round(out_2a$solution, 2), &quot;\n&quot;)</code></pre>
+<pre><code>## The optimal rotation length for infinite rotations when the initial 
+##  age of the stand is zero is:  60.14</code></pre>
+<pre class="r"><code>cat(&quot;Leading to the net present value of benefits being: &quot;, round(-out_2a$objective, 2))</code></pre>
+<pre><code>## Leading to the net present value of benefits being:  837.67</code></pre>
 </div>
 <div id="b.-1" class="section level3">
 <h3>B.</h3>
@@ -630,7 +707,12 @@ of the first rotation. Assuming the first rotation is followed by an
 infinite number of rotations, write an expression for present discounted
 value of net timber revenues from an infinite number of rotations
 (including the first one).</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span class="math display">\[
+\mathrm{\Pi_{\infty}= pQ(T_{\infty})e^{-\delta
+T_{\infty}}-c+T_{1}e^{-\delta T_{\infty}}}
+\]</span></p>
+<p><span style="color: blue;"><strong>See formula
+above</strong></span></p>
 <p><span style="color: blue;"></p>
 <p></span></p>
 </div>
@@ -639,13 +721,126 @@ value of net timber revenues from an infinite number of rotations
 <p>Using your formula in b, and assuming A=30, what is the optimal value
 of <span class="math inline">\(T_1\)</span>? How does your answer change
 when A=40? A=60.14? A=90? Make a table showing your results.</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span style="color: blue;"><strong>Assuming A=30, the optimal value
+of T_1 would be 30.91; when A=40, T_1 is 20.87; when A=60.14, T_1 is
+0.69; when A=90, T_1 is 0.</strong></span></p>
+<pre class="r"><code>fct_2c &lt;- function(choice, int_age, a, b, c, p, discount) {
+  
+  Q=exp(a-b/(choice+int_age))
+  # b1=(p*Q*exp(-discount*(choice))-c)/(1-exp(-discount*(choice)))
+  benefits=(p*Q*exp(-discount*choice)-c) + choice*(1-exp(-discount*choice))
+  
+  return(-benefits)
+}
+
+
+
+out_2c = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=30,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+# out_2c$solution
+# -out_2c$objective
+
+out_2c2 = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=40,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+# out_2c2$solution
+# -out_2c2$objective
+
+out_2c3 = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=60.14,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+# out_2c3$solution
+# -out_2c3$objective
+
+out_2c4 = nloptr(x0=10,
+                eval_f = fct_2c,
+                opts=options,
+                lb=0,
+                int_age=90,
+                a=13,
+                b=185,
+                c=1000,
+                p=1.78,
+                discount=0.05)
+# out_2c4$solution
+# -out_2c4$objective
+
+table &lt;- data.frame(&quot;A&quot;=c(30, 40, 60.14, 90), &quot;T1&quot;=c(round(out_2c$solution, 2), round(out_2c2$solution, 2), round(out_2c3$solution,2), round(out_2c4$solution, 2)), &quot;Objective&quot;=c(round(-out_2c$objective, 2), round(-out_2c2$objective,2), round(-out_2c3$objective,2), round(-out_2c4$objective, 2)))
+
+knitr::kable(table, align=&#39;c&#39;)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="center">A</th>
+<th align="center">T1</th>
+<th align="center">Objective</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">30.00</td>
+<td align="center">30.91</td>
+<td align="center">7077.68</td>
+</tr>
+<tr class="even">
+<td align="center">40.00</td>
+<td align="center">20.87</td>
+<td align="center">12291.33</td>
+</tr>
+<tr class="odd">
+<td align="center">60.14</td>
+<td align="center">0.69</td>
+<td align="center">35346.44</td>
+</tr>
+<tr class="even">
+<td align="center">90.00</td>
+<td align="center">0.00</td>
+<td align="center">99816.55</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="d.-1" class="section level3">
 <h3>D.</h3>
 <p>What do you notice about <span class="math inline">\(A+T_1\)</span>?
 Explain.</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span style="color: blue;"><strong>When t_1 is calculated with A=0,
+it states that the optimal rotation length is 60.14. This is the optimal
+rotation length to maximize benefits from harvest when considering
+discounting. As a result, with increasing initial age A, the optimal
+solution maximizes the harvest in the same way, while decreasing the
+rotation length to decrease the net present value of benefits lost to
+discounting. For A=0 through A=60.14, the optimal solution states that
+the present value of net benefits for a rotation is reached when the
+total age of the stand is 60.14; as a result, when A is less than 60.14,
+the optimal rotation length will be (close to) the difference between
+60.14 and A to minimize value lost from discounting. When the stand’s
+initial age is A=90, the present value of net benefits is maximized by
+harvesting the stand immediately; the age of the stand is older than the
+optimal age, so it is harvested immediately, not discounted, and its
+PVNB is higher than the other scenarios. </strong></span></p>
 <p><span style="color: blue;"></p>
 <p></span></p>
 </div>
