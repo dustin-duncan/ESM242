@@ -72,6 +72,9 @@ This problem expands on the forest rotation problem presented in class.  Suppose
 
 Before you solve the problem for six rotations, find the optimal rotation when only one rotation is done.  What is the optimal value of $T_1$?
 
+<span style="color: blue;">**The optimal rotation length when only one rotation is done is 32.64**
+</span>
+
 $$
 \mathrm{ Q(T)=e^{a-b/T} \\ 
 \max_{T_1} ~\Pi_{1}=pQ(T_{1})e^{-\delta T_{1}}-c}
@@ -110,7 +113,7 @@ out_1a$solution
 
 Now solve the problem for six consecutive rotations.  What are the six rotation lengths that you found?
 
-<span style="color: blue;">**Solution**
+<span style="color: blue;">**The six rotation lengths that were found when 6 rotations are done are: 29.32, 29.32, 29.35, 29.48, 30.04, and 32.65.**
 </span>
 
 
@@ -162,9 +165,8 @@ out_1b=nloptr(x0=rep(20, period),
               discount=0.05
               )
 
-out_1b$solution
--out_1b$objective
-
+cat("The optimal rotation lengths when six rotations are done are:\n ",round(out_1b$solution, 2), "\n")
+cat("The Present value of six consecutive rotations is:",round(-out_1b$objective, 2))
 ```
 
 
@@ -173,7 +175,7 @@ out_1b$solution
 
 Explain why $T_1$ through $T_5$ are shorter than $T_6$?
 
-<span style="color: blue;">**Solution**
+<span style="color: blue;">**T_6 is the longest rotation length because there are no costs associated with replanting after the 6th rotation. As a result, the first five rotations are shorter due to costs associated with replanting, and the discounted benefits associated with their lengths; so shortening the rotation length compared to period six increases their net present benefits.**
 </span>
 
 <span style="color: blue;">
@@ -206,7 +208,7 @@ out_1d$solution
 
 ```
 
-<span style="color: blue;">**Solution**
+<span style="color: blue;">**When the cost of replanting is increased to 500, increasing the rotation length allows for the additional benefits from the timber harvest to counteract the increased costs of replanting. Because there are still no costs associated with replanting at the end of the sixth rotation, the increased replanting cost would have no effect on its optimal rotation length.**
 </span>
 
 <span style="color: blue;">
@@ -220,18 +222,14 @@ out_1d$solution
 
 Compare your answer to part a (the single rotation) to $T_6$. Why are they the same?
 
-<span style="color: blue;">**Solution**
+<span style="color: blue;">**The optimal rotation length for a single rotation is the same as the sixth rotation length when there are six rotations done. This is due to the costs of replanting not playing a factor in either scenario and the discounting of benefits of the harvest, which leads to both optimal rotation lengths being 32.65 years.**
 </span>
-
-<span style="color: blue;">
-
-
-</span>
-
 
 ### F
 
 Now solve for the optimal rotation when an infinite number of rotations are done.  Compute the present value of net revenues (i.e., $objective). Compare this to the present value of net revenues when only six rotations are done. Are they close in magnitude?  Why?
+
+<span style="color: blue;">**The present value of net revenues when an infinite number of rotations are done within 1 unit difference from the present value of net revenues when 6 rotations are done. **</span>
 
 ```{r}
 
@@ -255,8 +253,8 @@ out_1f=nloptr(x0=20,
               discount=0.05
               )
 out_1f$solution
+-out_1b$objective
 -out_1f$objective
-
 ```
 
 ## Question 2: Varying Initial Age {.tabset}
