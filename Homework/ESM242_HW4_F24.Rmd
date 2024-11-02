@@ -1,0 +1,242 @@
+---
+title: "Homework 4"
+author: "Andrew Plantinga"
+date: "2024-10-29"
+output:
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(nloptr)
+library(knitr)
+```
+
+## Question 1: Costless Exhaustible Resource Extraction {.tabset} 
+
+Suppose there is an exhaustible resource that is costlessly extracted.  The inverse demand curve for the resource is  $p_t=a-bq_t$ where $q_t$ is the quantity extracted in time t and a=40, b=1.  The discount rate is $\delta=0.05$  and the initial stock of reserves is $R_0$ = 778.1259 units.  Set up a program to find the competitive market equilibrium that maximizes the present discounted profits from resource extraction.  $R_t$ is the reserves remaining in year t,  $\pi_t$ is the profits in each year (without costs, they are just equal to $p_tq_t$ ), and $\lambda_{t+1}=\frac{p_{t}}{\rho}$. 
+
+
+### A
+
+List the values of $t$, $p_t$, $q_t$, $R_t$, $\lambda_t$, and  $\pi_t$ in a table below.  What should be the final (year T) values of $p_T$ and $R_T$? Why?  
+
+<span style="color: blue;">**Solution**</span>
+
+```{r}
+
+fuck_this <- function(guess, a, b, c, discount, Ro) {
+  L=guess
+  t=seq(from=0,to=L)
+  choice=vector(mode="numeric", length=0)
+  P=vector(mode="numeric", length=0)
+  R=vector(mode="numeric", length=0)
+  benefits=vector(mode="numeric", length=0)
+  lambda=vector(mode="numeric", length=0)
+  
+  rho=1/(1+discount)
+  P[L+1]=a
+  R[L+1]=0
+  choice[L+1]=0
+  
+  benefits[L+1]=0
+  
+  for(i in (L+1):2) {
+    P[i-1]=(P[i]-c*discount)/(1+discount)
+    choice[i-1]=(a-P[i-1])/b
+    
+  }
+  
+  choice[1]=(a-P[1])/b
+  benefits[1]=(P[1]-c)*choice[1]
+  R[1]=Ro
+  
+  for(i in 2:(L+1)){
+    lambda[i]=P[i-1]/rho
+    benefits[i]=(P[i]-c)*choice[i]
+    R[i]=R[i-1]-choice[i-1]
+  }
+  
+  pv=rho^t*benefits
+  npv=sum(pv)
+  
+  return(-npv
+    # data.frame("Time" = t, "Price"=P, "Quantity"=choice, "Reserves" = round(R), "Profits" = benefits, "Lambda"=lambda)
+    )
+}
+
+options(scipen=999)
+df <- fuck_this(36, 40, 1, 0, 0.05, 778.1259)
+
+constraint <- function(choice, a, b, c, discount, Ro) {
+  L=length(choice)
+  t=seq(from=0,to=L)
+  state=vector(mode="numeric",length=0)
+  const=vector(mode="numeric",length=0)
+  choice=vector(mode="numeric",length=0)
+  P=vector(mode="numeric",length=0)
+  
+  
+  P[L+1]=a
+  choice[L+1]=0
+  state[L+1]=0
+  state[1]=Ro
+  
+  for(i in (L+1):2){
+    P[i-1]=(P[i]-c*discount)/(1+discount)
+    choice[i-1]=(a-P[i-1])/b
+  }
+  
+  q_sum=sum(choice)
+  
+  const=q_sum-state[1]
+  
+  return(const)
+  
+}
+
+# rs_fct <- function(choice, a, b, c, discount, Ro) {
+#   
+#   # Need to initialize vectors for choice (Q), P, benefits, and t
+#   t=seq(from=0,to=length(choice))
+#   choice=vector(mode="numeric", length=0)
+#   P=vector(mode="numeric", length=0)
+#   benefits=vector(mode="numeric", length=0)
+#   
+#   # Now set Initial conditions 
+#   rho=1/(1+discount)
+#   P[t+1]=a
+#   choice[t+1]=0
+#   
+#   for(i in (t+1):2) {
+#     # Calculates Price from t+1 to 1, and choice from t+1 to 1
+#     P[i-1]=(P[i]-c*discount)/(1+discount)
+#     choice[i]=(a-P[i])/b
+#   }
+#   
+#   # Now set final conditions 
+#   choice[1]=(a-P[1])/b
+#   
+#   benefits[1]=(P[1]-(c*discount))*choice[1]
+#   
+#   # Now define for loop for benefits 
+#   
+#   for(i in 2:(t+1)) {
+#     benefits[i]=(P[i]-(c*discount))*choice[i]
+#   }
+#   
+#   pv=rho^t*benefits
+#   npv=sum(pv)
+#   
+#   return(-npv)
+# }
+# 
+# constraint <- function(choice, a, b, c, discount, Ro) {
+#   
+#   const=vector(mode="numeric", length=0)
+#   P=vector(mode="numeric", length=0)
+#   
+#   t=seq(from=0, to=length(choice))
+#   state=Ro
+#   
+#   for(i in (t+1):2) {
+#     
+#     P[i-1]=(P[i]-c*discount)/(1+discount)
+#     choice[i]=(a-P[i])/b
+#   }
+#   
+#   q_sum=sum(choice)
+#   const=q_sum-state
+# }
+
+local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
+options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
+period=50
+out_1a=nloptr(x0=35,
+              eval_f=fuck_this, 
+              opts=options,
+              lb=0,
+              eval_g_eq = constraint,
+              a=40,
+              b=1,
+              c=0,
+              discount=0.05,
+              Ro=778.1259)
+
+out_1a$solution
+-out_1a$objective
+# Po=(40*1.05)/(778.1259*0.05)
+# Po
+```
+
+
+<span style="color: blue;">
+</span>
+
+### B.
+
+Is the resource getting more scarce over time? What is your evidence?
+
+<span style="color: blue;">**Solution**</span>
+
+<span style="color: blue;">
+</span>
+
+### C.
+
+If you were to increase the initial stock of reserve ($R_0$) by one unit and resolve the equilibrium, how much would the present discounted value of profits increase?  Hint: you don't need to resolve the model. An approximate answer is already in your table.
+
+<span style="color: blue;">**Solution**</span>
+
+<span style="color: blue;">
+</span>
+
+
+## Question 2: Exhaustible resource extraction with costs {.tabset}
+
+Consider three extensions of the model in question 1.  In case 1, there is a constant marginal cost of extraction c = 3.178025.  The profits in each year are now $\pi_t=(p_t-c)q_t$ and the shadow price satisfies $p_t-c=\rho\lambda_{t+1}$. In case 2, marginal costs are zero again but the initial stock of reserves increases to $R_0$ = 948.2253 units.  In case 3, marginal costs are still zero and reserves go back to $R_0$=778.1259, but the demand curve parameters are now a=40, b=0.75194.  A lower value of b means that the demand curve rotates outward around a=40.  
+
+### A.
+
+What is the final year T for the three cases? Explain why they are different from question 1.
+
+<span style="color: blue;">**Solution**</span>
+
+```{r}
+
+
+
+```
+
+
+
+
+<span style="color: blue;">
+</span>
+
+### B. 
+
+How does $\lambda_1$ in the three cases compare to its value in question 1?  What explains the differences?
+
+<span style="color: blue;">**Solution**</span>
+
+<span style="color: blue;">
+</span>
+
+
+
+
+### C.
+
+What happens to the present discounted value of profits (in other words, the value of the reserves $R_0$) in the three cases compared to question 1? Explain the differences.
+
+<span style="color: blue;">**Solution**</span>
+
+<span style="color: blue;">
+</span>
+
