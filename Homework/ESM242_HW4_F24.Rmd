@@ -73,26 +73,67 @@ fuck_this <- function(guess, a, b, c, discount, Ro) {
 options(scipen=999)
 df <- fuck_this(36, 40, 1, 0, 0.05, 778.1259)
 
+fuck_this2 <- function(choice, a, b, c, discount, Ro) {
+  t=seq(from=0,to=length(choice))
+  Q=vector(mode="numeric", length=0)
+  P=vector(mode="numeric", length=0)
+  R=vector(mode="numeric", length=0)
+  benefits=vector(mode="numeric", length=0)
+  lambda=vector(mode="numeric", length=0)
+  
+  rho=1/(1+discount)
+  P[choice+1]=a
+  R[choice+1]=0
+  Q[choice+1]=0
+  
+  benefits[choice+1]=0
+  
+  for(i in (choice+1):2) {
+    P[i-1]=(P[i]-c*discount)/(1+discount)
+    Q[i-1]=(a-P[i-1])/b
+    
+  }
+  
+  Q[1]=(a-P[1])/b
+  benefits[1]=(P[1]-c)*Q[1]
+  R[1]=Ro
+  
+  for(i in 2:(choice+1)){
+    lambda[i]=P[i-1]/rho
+    benefits[i]=(P[i]-c)*Q[i]
+    R[i]=R[i-1]-Q[i-1]
+  }
+  
+  pv=rho^t*benefits
+  npv=sum(pv)
+  
+  return(-npv
+    # data.frame("Time" = t, "Price"=P, "Quantity"=choice, "Reserves" = round(R), "Profits" = benefits, "Lambda"=lambda)
+    )
+}
+
+
+
 constraint <- function(choice, a, b, c, discount, Ro) {
-  L=length(choice)
-  t=seq(from=0,to=L)
+  # In my previous code everything that is now "choice" was "L"
+  t=seq(from=0,to=length(choice))
   state=vector(mode="numeric",length=0)
   const=vector(mode="numeric",length=0)
-  choice=vector(mode="numeric",length=0)
+  Q=vector(mode="numeric",length=0)
   P=vector(mode="numeric",length=0)
   
   
-  P[L+1]=a
-  choice[L+1]=0
-  state[L+1]=0
+  P[choice+1]=a
+  Q[choice+1]=0
+  state[choice+1]=0
   state[1]=Ro
   
-  for(i in (L+1):2){
+  for(i in (choice+1):2){
     P[i-1]=(P[i]-c*discount)/(1+discount)
-    choice[i-1]=(a-P[i-1])/b
+    Q[i-1]=(a-P[i-1])/b
   }
   
-  q_sum=sum(choice)
+  q_sum=sum(Q)
   
   const=q_sum-state[1]
   
@@ -156,9 +197,9 @@ constraint <- function(choice, a, b, c, discount, Ro) {
 
 local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
 options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
-period=50
-out_1a=nloptr(x0=35,
-              eval_f=fuck_this, 
+# period=50
+out_1a=nloptr(x0=36,
+              eval_f=fuck_this2, 
               opts=options,
               lb=0,
               eval_g_eq = constraint,
