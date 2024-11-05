@@ -73,6 +73,8 @@ options(scipen=999)
 df <- normal_solution(36, 40, 1, 0, 0.05, 778.1259)
 
 knitr::kable(df, align="c")
+ggplot(df, aes(x = Time, y = Profits)) + 
+  geom_point()
 ```
 
 
@@ -93,43 +95,39 @@ cowplot::plot_grid(quantity, price, reserves, time, nrow=2,ncol=2)
 
 ```{r}
 opt_fct <- function(choice, int_state, a, b, c, discount) {
-  # L=length(choice)
-  t=length(choice)
-  time=seq(from=0,to=t)
-  Q=vector(mode="numeric", length=0) # This is q
+  
+  t=choice
   P=vector(mode="numeric", length=0) # P is price
-  state=vector(mode="numeric", length=0) # State is reserves
+  Q=vector(mode="numeric", length=0) # This is q
+  R=vector(mode="numeric", length=0) # State is reserves
   benefits=vector(mode="numeric", length=0)
   # lambda=vector(mode="numeric", length=0)
 
   # Define initial conditions. Since we are working down these are at the end of the time frame
   P[t+1]=a
-  state[t+1]=0
-  # choice[L+1]=0
-
+  R[t+1]=0
+  Q[t+1]=0
   benefits[t+1]=0
 
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-c*discount)/((1+discount)^choice[i]) # Gives P from L+1 : 1
+    P[i-1]=(P[i]-c*discount)/(1+discount) # Gives P from t+1 to 1
 
-    Q[i-1]=(a-P[i-1])/b
+    Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
   }
-
-  state[1]=int_state
-  # P[i]=a - (b*choice[i])
-  P[1]=(P[2]-c*discount)/((1+discount)^choice[1])
-  Q[1]=(a-P[1])/b
-  benefits[1]=(P[1]-c)*Q[1]
   
-  for(k in 2:(t+1)) {
-    state[i]=state[i-1]+choice[i] # Gives R from L+1 : 1
+  benefits[1]=(P[1]-c)*Q[1]
 
-    benefits[i]=(P[i]-c)*choice[i] # Gives benefits from L+1 : 1
+  R[1]=int_state
+  
+  for(i in 2:((t+1)-1)) {
+    R[i]=R[i-1]-Q[i-1] # Gives R from 2 to t+1
+
+    benefits[i]=(P[i]-c)*Q[i] # Gives benefits from 2 to t+1
   }
 
-  # t2=seq(from=0, to=t)
+  time=seq(from=0,to=t)
   rho=1/(1+discount)
   pv=rho^time*benefits
   npv=sum(pv)
@@ -143,12 +141,33 @@ opt_fct <- function(choice, int_state, a, b, c, discount) {
 
 constraint <- function(choice, int_state, a, b, c, discount) {
   # In my previous code everything that is now "choice" was "L"
-  # t=seq(from=0,to=length(choice))
-  # state=vector(mode="numeric",length=0)
-  # const=vector(mode="numeric",length=0)
+  t=choice
+  time=seq(from=0,to=t)
+  R=vector(mode="numeric",length=0)
+  const=vector(mode="numeric",length=0)
+  P=vector(mode="numeric",length=0)
+  Q=vector(mode="numeric",length=0)
+  
+  P[t+1]=a
+  R[t+1]=0
+  Q[t+1]=0
+  # # choice[L+1]=0
+  # benefits[t+1]=0
+  
+  for(i in (t+1):2) {
+
+    P[i-1]=(P[i]-c*discount)/(1+discount) # Gives P from L+1 : 1
+
+    Q[i-1]=(a-P[i-1])/b
+
+  }
+
+  # # P[i]=a - (b*choice[i])
+  # P[1]=(P[2]-c*discount)/(1+discount)
+  # Q[1]=(a-P[1])/b
 
   # state[1]=int_state
-  const=sum(choice)-int_state
+  const=int_state-sum(Q)
 
   return(const)
 
@@ -156,13 +175,12 @@ constraint <- function(choice, int_state, a, b, c, discount) {
 
 local_opts<-list("algorithm"="NLOPT_LN_COBYLA",xtol_rel=1e-15)
 options=list("algorithm"="NLOPT_LN_AUGLAG",xtol_rel=1e-15,maxeval=16000,"local_opts"=local_opts)
-R0=778.1259
-L=36
-out_1a=nloptr(x0=36,
+# R0=778.1259
+# L=36
+out_1a=nloptr(x0=35,
               eval_f=opt_fct,
               opts=options,
               lb=0,
-              ub=R0,
               eval_g_eq = constraint,
               a=40,
               b=1,
@@ -171,6 +189,7 @@ out_1a=nloptr(x0=36,
               int_state=778.1259)
 
 out_1a$solution
+-out_1a$objective
 # # Okay so of course if the time period is shorter its going to have higher benefits because you arent losing as much to discounting. Does lambda play a factor??? 
 # test5=-out_1a$objective # 6288.40, L = 33
 # test4=-out_1a$objective # 5997.13, L = 34
