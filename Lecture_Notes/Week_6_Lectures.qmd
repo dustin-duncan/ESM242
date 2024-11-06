@@ -1,0 +1,112 @@
+---
+title: "Week 5 Lecture Notes"
+author: "Dustin Duncan"
+format: 
+  html:
+    code-fold: true
+    toc: true
+    number-sections: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+---
+
+## Land Use and Land Value 
+
+### Theoretical underpinnings 
+
+Von Thunen (1783-1850)
+
+- The Isolated State (1826)
+- Influences on history, geography, economics, conservation biology, etc.
+
+David Ricardo (1772-1823)
+
+- Ricardian Rents
+- In agriculture, rent is the additional profit that accrues to the owner of relatively productive land 
+
+### Land Rent 
+
+If cost is the same of wheat that comes from two different farms, but one farm yields twice as much wheat, then the profit for the first and second farm is $\mathrm{Profit_{1}=2PY-C \text{, vs } Profit_{2}=PY-C}$
+
+#### Higher yielding fields Earn Rents 
+
+- If wheat profits are positive, additional land will be brought into production 
+- When more land gets brought into production, the supply curve shifts out, lowering the price of wheat 
+  - Eventually, profits on the less fertile fields get driven to zero 
+  - The rent earned by the more fertile field is equal to the economic return ito the difference in yields 
+  - $\mathrm{P'2Y-C = P'Y + P'Y -C=P'Y \gt 0}$
+  
+#### von Thunen's Featureless Plan
+
+- thought experiment: you have a landscape that is a featureless plain with a city in the center. The only heterogeneity is distance to the (single) city
+- Land rents fall with distance to the city because the costs of transporting goods increases
+  - Implies that the land that is closer to the city will earn rents 
+- If there are different types of agricultural products, each will be grown in a zone represented by a concentric ring around the city 
+- More intensive uses of the land will happen closer to the city 
+
+**Rent Gradients and Land Use**
+
+- As rent decreases as you move out from a given distance to the city, the given area will be used for the land use with the highest rent (depending on frequency of required trips to the city)
+
+**What determines the location of a city?**
+
+- In the 18th century, cities tended to develop along "fall lines" which is where there is a waterfall in a given river, so boats travelling upriver would make port at these locations, leading to the development of cities. 
+
+**Why are towns and cities so persistent?**
+
+- Example: Depot towns in Iowa
+  - Euro-americans moving west from the Mississippi River after pushing out Native Americans 
+  - Railroads used to transport material west, and built depot towns to provide a location for farmers in the area to transport their goods to the city (and farmers themselves)
+- Houses are quite durable, and contribute to the persistence of towns 
+
+**Housing Markets and Sorting**
+
+- "Sorting" describes the way that market forces partition agents across segments of a market
+- For example, households sort across neighborhoods according to wealth, preferences for amenities, commuting costs, etc. 
+
+How does this work in a simple housing market? 
+
+- Households work in the CBD at location x=0
+- They live at some distance x from the CBD and incur commuting costs tx
+- Households get utility from houseing h and a good g: $\mathrm{U(h,g)=h^{a}g^{b}}$. Housing quantity is fixed at $\mathrm{h=1}$ so $\mathrm{U=g^{b}}$
+- The household budget constraint is $\mathrm{p_{h}+g+tx=I}$, where the price of a good g is 1 and I is income 
+- In spatial market equilibrium, all households get the same utility $\mathrm{\bar{U}=(I-p_{h}-tx)^{b}}$ THis means that $\mathrm{I-p_{h}-tx= \bar{U}^{\frac{1}{b}}}$ or $\mathrm{p_{h}=I - \bar{U}^{\frac{1}{b}}-tx}$
+- Housing prices decline with distance to the CBD 
+- If the price of agricultural land is $r_{ag}$, the city looks like: the $p_{h}$ declines linearly with distance from the city 
+  - **However**, if two different income groups have different utility levels and commuting costs, then it will imply different elasticity of the $p_{h}$ curve where the high income have a steeper demand for living in the city compared to the lower income group, which has a lower demand for living in the city with a small decrease (compared to high income) as they move farther from the city 
+  
+**Tiebout Sorting**
+
+The Tiebout model holds that if municipalities offered varying baskets of goods (government services) at a variety of prices (tax rates), that people with different personal valuations of these services and prices would move from one local community to another ("voting with their feet") which maximizes their personal utility. Individual choices on where to live leads to the equilibrium provision of local public goods in accordance with the tastes of residents, thereby sorting the population into optimum communities. 
+
+**Environmental Justice (Cain et al. 2024)**
+
+- Pollution gap - differences in exposure by demographic groups 
+  - Black, Hispanic, Asian, low-income groups have higher pollution exposure
+- Mechanisms 
+  - Residential sorting, firm sorting, procedural justice, discriminatory policy/enforcement (market and nonmarket)
+  - Additional factors to consider in sorting models: pure discrimination, mobility differences, vulnerability differences
+  - Market policies include cap-and-trade programs and nonmarket 
+    - Currie et al. (2020) find that pollution concentrations have decreased through the U.S. in the last few decades, with larger gains in Black than white neighborhoods, attributable t CAA Amendments of 2006
+    - Other studies on the Toxics Release Inventory find the reverse results
+    - 
+  - Climate justice
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
