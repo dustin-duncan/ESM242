@@ -48,7 +48,7 @@ opt_fct <- function(choice, int_state, a, b, c, discount) {
 
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-c*discount)/(1+discount) # Gives P from t+1 to 1
+    P[i-1]=(P[i]-(c*discount))/(1+discount) # Gives P from t+1 to 1
 
     Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
@@ -88,7 +88,7 @@ constraint <- function(choice, int_state, a, b, c, discount) {
   
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-c*discount)/(1+discount) # Gives P from t+1 to 1
+    P[i-1]=(P[i]-(c*discount))/(1+discount) # Gives P from t+1 to 1
 
     Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
@@ -138,7 +138,7 @@ table_function <- function(choice, a=40, b=1, c=0, discount=0.05, int_state=778.
 
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-c*discount)/(1+discount) # Gives P from t+1 to 1
+    P[i-1]=(P[i]-(c*discount))/(1+discount) # Gives P from t+1 to 1
 
     Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
@@ -153,7 +153,7 @@ table_function <- function(choice, a=40, b=1, c=0, discount=0.05, int_state=778.
     R[i]=R[i-1]-Q[i-1] # Gives R from 2 to t+1
 
     benefits[i]=(P[i]-c)*Q[i] # Gives benefits from 2 to t+1
-    lambda[i]=(P[i-1]-c)*(1+discount)
+    lambda[i]=(P[i-1]-c)/(1/(1+discount))
   }
 
   time=seq(from=0,to=t)
@@ -226,7 +226,7 @@ out_2a1=nloptr(x0=35,
                c=3.178025,
                discount=0.05,
                int_state=778.1259)
-round(out_2a1$solution)
+out_2a1$solution
 -out_2a1$objective
 
 out_2a2=nloptr(x0=35,
@@ -239,10 +239,10 @@ out_2a2=nloptr(x0=35,
                c=0,
                discount=0.05,
                int_state=948.2253)
-round(out_2a2$solution)
+out_2a2$solution
 -out_2a2$objective
 
-out_2a3=nloptr(x0=35,
+out_2a3=nloptr(x0=25,
                eval_f=opt_fct,
                opts=options,
                lb=0,
@@ -252,7 +252,7 @@ out_2a3=nloptr(x0=35,
                c=0,
                discount=0.05,
                int_state=778.1259)
-round(out_2a3$solution)
+out_2a3$solution
 -out_2a3$objective
 
 
@@ -272,19 +272,17 @@ How does $\lambda_1$ in the three cases compare to its value in question 1?  Wha
 <span style="color: blue;">**Solution**</span>
 
 ```{r}
-# This is not correct but getting there 
-df2b1 <- table_function(round(out_2a1$solutio), c=3.178025)
+# This is correct for each case except for case 1. Not sure why it isn't depleting the resource to zero aside from it looks like it could use another year.
+df2b1 <- table_function(out_2a1$solution, c=3.178025)
 knitr::kable(df2b1, align='c')
-df2b2 <- table_function(round(out_2a2$solution), int_state=948.2253)
+df2b2 <- table_function(out_2a2$solution, int_state=948.2253)
 knitr::kable(df2b2, align='c')
-df2b3 <- table_function(round(out_2a3$solution), b=0.75194)
+df2b3 <- table_function(out_2a3$solution, b=0.75194)
 knitr::kable(df2b3, align='c')
 ```
 
 <span style="color: blue;">
 </span>
-
-
 
 
 ### C.
