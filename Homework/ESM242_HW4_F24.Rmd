@@ -148,8 +148,9 @@ table_function <- function(choice, a=40, b=1, c=0, discount=0.05, int_state=778.
   lambda[1]=0
   R[1]=int_state
   rho=1/(1+discount)
+  lambda[t+1]=(P[t]-c)/rho
   
-  for(i in 2:((t+1))) {
+  for(i in 2:((t+1)-1)) {
     R[i]=R[i-1]-Q[i-1] # Gives R from 2 to t+1
 
     benefits[i]=(P[i]-c)*Q[i] # Gives benefits from 2 to t+1
@@ -216,7 +217,7 @@ What is the final year T for the three cases? Explain why they are different fro
 
 ```{r}
 # Im not sure if these are correct... These solutions input into the table function give weird answers 
-out_2a1=nloptr(x0=35,
+out_2a1=nloptr(x0=40,
                eval_f=opt_fct,
                opts=options,
                lb=0,
