@@ -215,6 +215,7 @@ What is the final year T for the three cases? Explain why they are different fro
 <span style="color: blue;">**The final year T for each of the three cases are: case 1=34, case 2=40, and case 3=30.**</span>
 
 ```{r}
+# Im not sure if these are correct... These solutions input into the table function give weird answers 
 out_2a1=nloptr(x0=35,
                eval_f=opt_fct,
                opts=options,
@@ -271,6 +272,7 @@ How does $\lambda_1$ in the three cases compare to its value in question 1?  Wha
 <span style="color: blue;">**Solution**</span>
 
 ```{r}
+# This is not correct but getting there 
 df2b1 <- table_function(round(out_2a1$solutio), c=3.178025)
 knitr::kable(df2b1, align='c')
 df2b2 <- table_function(round(out_2a2$solution), int_state=948.2253)
