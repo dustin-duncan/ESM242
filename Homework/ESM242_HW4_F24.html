@@ -447,7 +447,8 @@ display: none;
 
 <pre class="r"><code>library(tidyverse)
 library(nloptr)
-library(knitr)</code></pre>
+library(knitr)
+library(cowplot)</code></pre>
 <div id="question-1-costless-exhaustible-resource-extraction" class="section level2 tabset">
 <h2 class="tabset">Question 1: Costless Exhaustible Resource
 Extraction</h2>
@@ -464,16 +465,530 @@ maximizes the present discounted profits from resource extraction. <span class="
 <p>List the values of <span class="math inline">\(t\)</span>, <span class="math inline">\(p_t\)</span>, <span class="math inline">\(q_t\)</span>, <span class="math inline">\(R_t\)</span>, <span class="math inline">\(\lambda_t\)</span>, and <span class="math inline">\(\pi_t\)</span> in a table below. What should be
 the final (year T) values of <span class="math inline">\(p_T\)</span>
 and <span class="math inline">\(R_T\)</span>? Why?</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
-<pre class="r"><code>local_opts&lt;-list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-15)
-options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_AUGLAG&quot;,xtol_rel=1e-15,maxeval=16000,&quot;local_opts&quot;=local_opts)</code></pre>
+<p><span style="color: blue;"><strong>The final values of p_T and R_T
+should be 38.09 and 0 respectively. To maximize the present discounted
+profits from resource extraction in a competitive market, the firm would
+harvest all of the reserves available, leaving none left at the end. In
+addition, in competitive equilibrium for an exhaustible resource, the
+price of the good should increase at the rate of discount in this case
+until it reaches the choke price (40), where demand is
+zero.</strong></span></p>
+<pre class="r"><code>opt_fct &lt;- function(choice, int_state, a, b, c, discount) {
+  
+  t=choice
+  P=vector(mode=&quot;numeric&quot;, length=0) # P is price
+  Q=vector(mode=&quot;numeric&quot;, length=0) # This is q
+  R=vector(mode=&quot;numeric&quot;, length=0) # State is reserves
+  benefits=vector(mode=&quot;numeric&quot;, length=0)
+  # lambda=vector(mode=&quot;numeric&quot;, length=0)
+
+  # Define initial conditions. Since we are working down these are at the end of the time frame
+  P[t+1]=a
+  R[t+1]=0
+  Q[t+1]=0
+  benefits[t+1]=0
+
+  for(i in (t+1):2) {
+
+    P[i-1]=(P[i]+(c*discount))/(1+discount) # Gives P from t+1 to 1
+
+    Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
+
+  }
+  
+  benefits[1]=(P[1]-c)*Q[1]
+
+  R[1]=int_state
+  
+  for(i in 2:((t+1)-1)) {
+    R[i]=R[i-1]-Q[i-1] # Gives R from 2 to t because we know it in t+1
+
+    benefits[i]=(P[i]-c)*Q[i] # Gives benefits from 2 to t for same as above
+  }
+
+  time=seq(from=0,to=t)
+  rho=1/(1+discount)
+  pv=rho^time*benefits
+  npv=sum(pv)
+
+  return(-npv)
+}
+
+
+
+constraint &lt;- function(choice, int_state, a, b, c, discount) {
+  t=choice
+  time=seq(from=0,to=t)
+  R=vector(mode=&quot;numeric&quot;,length=0)
+  const=vector(mode=&quot;numeric&quot;,length=0)
+  P=vector(mode=&quot;numeric&quot;,length=0)
+  Q=vector(mode=&quot;numeric&quot;,length=0)
+  
+  P[t+1]=a
+  R[t+1]=0
+  Q[t+1]=0
+  
+  for(i in (t+1):2) {
+
+    P[i-1]=(P[i]+(c*discount))/(1+discount) # Gives P from t+1 to 1
+
+    Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
+
+  }
+  
+  # Defining the constraint 
+  const=int_state-sum(Q)
+
+  return(const)
+
+}
+
+local_opts&lt;-list(&quot;algorithm&quot;=&quot;NLOPT_LN_COBYLA&quot;,xtol_rel=1e-15)
+options=list(&quot;algorithm&quot;=&quot;NLOPT_LN_AUGLAG&quot;,xtol_rel=1e-15,maxeval=16000,&quot;local_opts&quot;=local_opts)
+# R0=778.1259
+# L=36
+out_1a=nloptr(x0=35,
+              eval_f=opt_fct,
+              opts=options,
+              lb=0,
+              eval_g_eq = constraint,
+              a=40,
+              b=1,
+              c=0,
+              discount=0.05,
+              int_state=778.1259)
+
+out_1a$solution</code></pre>
+<pre><code>## [1] 36.64062</code></pre>
+<pre class="r"><code>-out_1a$objective</code></pre>
+<pre><code>## [1] 5373.968</code></pre>
+<pre class="r"><code>table_function &lt;- function(choice, a=40, b=1, c=0, discount=0.05, int_state=778.1259) {
+  t=choice
+  P=vector(mode=&quot;numeric&quot;, length=0) # P is price
+  Q=vector(mode=&quot;numeric&quot;, length=0) # This is q
+  R=vector(mode=&quot;numeric&quot;, length=0) # State is reserves
+  benefits=vector(mode=&quot;numeric&quot;, length=0)
+  lambda=vector(mode=&quot;numeric&quot;, length=0)
+
+  # Define initial conditions. Since we are working down these are at the end of the time frame
+  P[t+1]=a
+  R[t+1]=0
+  Q[t+1]=0
+  benefits[t+1]=0
+
+  for(i in (t+1):2) {
+
+    P[i-1]=(P[i]+(c*discount))/(1+discount) # Gives P from t+1 to 1
+
+    Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
+
+  }
+  
+  benefits[1]=(P[1]-c)*Q[1]
+  lambda[1]=0
+  R[1]=int_state
+  rho=1/(1+discount)
+  lambda[t+1]=0
+  
+  for(i in 2:((t+1)-1)) {
+    R[i]=R[i-1]-Q[i-1] # Gives R from 2 to t+1
+
+    benefits[i]=(P[i]-c)*Q[i] # Gives benefits from 2 to t+1
+    lambda[i]=(P[i-1]-c)/(1/(1+discount))
+  }
+
+  time=seq(from=0,to=t)
+  pv=rho^time*benefits
+  npv=sum(pv)
+  
+  return(data.frame(&quot;Time&quot; = time, &quot;Price&quot;=P, &quot;Quantity&quot;=Q, &quot;Reserves&quot; = round(R), &quot;Profits&quot; = benefits, &quot;Lambda&quot;=lambda, &quot;PV&quot;=pv)
+    )
+}
+
+options(scipen=999)
+df &lt;- table_function(out_1a$solution)
+
+knitr::kable(df, align=&quot;c&quot;)</code></pre>
+<table>
+<colgroup>
+<col width="8%" />
+<col width="15%" />
+<col width="15%" />
+<col width="14%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">Time</th>
+<th align="center">Price</th>
+<th align="center">Quantity</th>
+<th align="center">Reserves</th>
+<th align="center">Profits</th>
+<th align="center">Lambda</th>
+<th align="center">PV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">0</td>
+<td align="center">6.906297</td>
+<td align="center">33.093703</td>
+<td align="center">778</td>
+<td align="center">228.55493</td>
+<td align="center">0.000000</td>
+<td align="center">228.55493</td>
+</tr>
+<tr class="even">
+<td align="center">1</td>
+<td align="center">7.251611</td>
+<td align="center">32.748389</td>
+<td align="center">745</td>
+<td align="center">237.47859</td>
+<td align="center">7.251611</td>
+<td align="center">226.17008</td>
+</tr>
+<tr class="odd">
+<td align="center">2</td>
+<td align="center">7.614192</td>
+<td align="center">32.385808</td>
+<td align="center">712</td>
+<td align="center">246.59176</td>
+<td align="center">7.614192</td>
+<td align="center">223.66600</td>
+</tr>
+<tr class="even">
+<td align="center">3</td>
+<td align="center">7.994902</td>
+<td align="center">32.005098</td>
+<td align="center">680</td>
+<td align="center">255.87761</td>
+<td align="center">7.994902</td>
+<td align="center">221.03670</td>
+</tr>
+<tr class="odd">
+<td align="center">4</td>
+<td align="center">8.394647</td>
+<td align="center">31.605353</td>
+<td align="center">648</td>
+<td align="center">265.31577</td>
+<td align="center">8.394647</td>
+<td align="center">218.27594</td>
+</tr>
+<tr class="even">
+<td align="center">5</td>
+<td align="center">8.814379</td>
+<td align="center">31.185621</td>
+<td align="center">616</td>
+<td align="center">274.88188</td>
+<td align="center">8.814379</td>
+<td align="center">215.37715</td>
+</tr>
+<tr class="odd">
+<td align="center">6</td>
+<td align="center">9.255098</td>
+<td align="center">30.744902</td>
+<td align="center">585</td>
+<td align="center">284.54708</td>
+<td align="center">9.255098</td>
+<td align="center">212.33341</td>
+</tr>
+<tr class="even">
+<td align="center">7</td>
+<td align="center">9.717853</td>
+<td align="center">30.282147</td>
+<td align="center">554</td>
+<td align="center">294.27745</td>
+<td align="center">9.717853</td>
+<td align="center">209.13749</td>
+</tr>
+<tr class="odd">
+<td align="center">8</td>
+<td align="center">10.203746</td>
+<td align="center">29.796254</td>
+<td align="center">524</td>
+<td align="center">304.03340</td>
+<td align="center">10.203746</td>
+<td align="center">205.78177</td>
+</tr>
+<tr class="even">
+<td align="center">9</td>
+<td align="center">10.713933</td>
+<td align="center">29.286067</td>
+<td align="center">494</td>
+<td align="center">313.76896</td>
+<td align="center">10.713933</td>
+<td align="center">202.25827</td>
+</tr>
+<tr class="odd">
+<td align="center">10</td>
+<td align="center">11.249629</td>
+<td align="center">28.750371</td>
+<td align="center">465</td>
+<td align="center">323.43101</td>
+<td align="center">11.249629</td>
+<td align="center">198.55859</td>
+</tr>
+<tr class="even">
+<td align="center">11</td>
+<td align="center">11.812111</td>
+<td align="center">28.187889</td>
+<td align="center">436</td>
+<td align="center">332.95847</td>
+<td align="center">11.812111</td>
+<td align="center">194.67392</td>
+</tr>
+<tr class="odd">
+<td align="center">12</td>
+<td align="center">12.402716</td>
+<td align="center">27.597284</td>
+<td align="center">408</td>
+<td align="center">342.28128</td>
+<td align="center">12.402716</td>
+<td align="center">190.59503</td>
+</tr>
+<tr class="even">
+<td align="center">13</td>
+<td align="center">13.022852</td>
+<td align="center">26.977148</td>
+<td align="center">380</td>
+<td align="center">351.31941</td>
+<td align="center">13.022852</td>
+<td align="center">186.31218</td>
+</tr>
+<tr class="odd">
+<td align="center">14</td>
+<td align="center">13.673995</td>
+<td align="center">26.326005</td>
+<td align="center">353</td>
+<td align="center">359.98166</td>
+<td align="center">13.673995</td>
+<td align="center">181.81520</td>
+</tr>
+<tr class="even">
+<td align="center">15</td>
+<td align="center">14.357695</td>
+<td align="center">25.642305</td>
+<td align="center">327</td>
+<td align="center">368.16439</td>
+<td align="center">14.357695</td>
+<td align="center">177.09337</td>
+</tr>
+<tr class="odd">
+<td align="center">16</td>
+<td align="center">15.075579</td>
+<td align="center">24.924421</td>
+<td align="center">302</td>
+<td align="center">375.75008</td>
+<td align="center">15.075579</td>
+<td align="center">172.13544</td>
+</tr>
+<tr class="even">
+<td align="center">17</td>
+<td align="center">15.829358</td>
+<td align="center">24.170642</td>
+<td align="center">277</td>
+<td align="center">382.60575</td>
+<td align="center">15.829358</td>
+<td align="center">166.92962</td>
+</tr>
+<tr class="odd">
+<td align="center">18</td>
+<td align="center">16.620826</td>
+<td align="center">23.379174</td>
+<td align="center">252</td>
+<td align="center">388.58118</td>
+<td align="center">16.620826</td>
+<td align="center">161.46351</td>
+</tr>
+<tr class="even">
+<td align="center">19</td>
+<td align="center">17.451867</td>
+<td align="center">22.548133</td>
+<td align="center">229</td>
+<td align="center">393.50702</td>
+<td align="center">17.451867</td>
+<td align="center">155.72409</td>
+</tr>
+<tr class="odd">
+<td align="center">20</td>
+<td align="center">18.324461</td>
+<td align="center">21.675539</td>
+<td align="center">206</td>
+<td align="center">397.19257</td>
+<td align="center">18.324461</td>
+<td align="center">149.69770</td>
+</tr>
+<tr class="even">
+<td align="center">21</td>
+<td align="center">19.240684</td>
+<td align="center">20.759316</td>
+<td align="center">185</td>
+<td align="center">399.42344</td>
+<td align="center">19.240684</td>
+<td align="center">143.36999</td>
+</tr>
+<tr class="odd">
+<td align="center">22</td>
+<td align="center">20.202718</td>
+<td align="center">19.797282</td>
+<td align="center">164</td>
+<td align="center">399.95891</td>
+<td align="center">20.202718</td>
+<td align="center">136.72590</td>
+</tr>
+<tr class="even">
+<td align="center">23</td>
+<td align="center">21.212854</td>
+<td align="center">18.787146</td>
+<td align="center">144</td>
+<td align="center">398.52899</td>
+<td align="center">21.212854</td>
+<td align="center">129.74960</td>
+</tr>
+<tr class="odd">
+<td align="center">24</td>
+<td align="center">22.273497</td>
+<td align="center">17.726503</td>
+<td align="center">125</td>
+<td align="center">394.83121</td>
+<td align="center">22.273497</td>
+<td align="center">122.42449</td>
+</tr>
+<tr class="even">
+<td align="center">25</td>
+<td align="center">23.387172</td>
+<td align="center">16.612828</td>
+<td align="center">108</td>
+<td align="center">388.52707</td>
+<td align="center">23.387172</td>
+<td align="center">114.73312</td>
+</tr>
+<tr class="odd">
+<td align="center">26</td>
+<td align="center">24.556530</td>
+<td align="center">15.443470</td>
+<td align="center">91</td>
+<td align="center">379.23803</td>
+<td align="center">24.556530</td>
+<td align="center">106.65718</td>
+</tr>
+<tr class="even">
+<td align="center">27</td>
+<td align="center">25.784357</td>
+<td align="center">14.215643</td>
+<td align="center">76</td>
+<td align="center">366.54122</td>
+<td align="center">25.784357</td>
+<td align="center">98.17745</td>
+</tr>
+<tr class="odd">
+<td align="center">28</td>
+<td align="center">27.073574</td>
+<td align="center">12.926426</td>
+<td align="center">61</td>
+<td align="center">349.96454</td>
+<td align="center">27.073574</td>
+<td align="center">89.27373</td>
+</tr>
+<tr class="even">
+<td align="center">29</td>
+<td align="center">28.427253</td>
+<td align="center">11.572747</td>
+<td align="center">49</td>
+<td align="center">328.98140</td>
+<td align="center">28.427253</td>
+<td align="center">79.92482</td>
+</tr>
+<tr class="odd">
+<td align="center">30</td>
+<td align="center">29.848616</td>
+<td align="center">10.151384</td>
+<td align="center">37</td>
+<td align="center">303.00477</td>
+<td align="center">29.848616</td>
+<td align="center">70.10847</td>
+</tr>
+<tr class="even">
+<td align="center">31</td>
+<td align="center">31.341047</td>
+<td align="center">8.658953</td>
+<td align="center">27</td>
+<td align="center">271.38066</td>
+<td align="center">31.341047</td>
+<td align="center">59.80130</td>
+</tr>
+<tr class="odd">
+<td align="center">32</td>
+<td align="center">32.908099</td>
+<td align="center">7.091901</td>
+<td align="center">18</td>
+<td align="center">233.38098</td>
+<td align="center">32.908099</td>
+<td align="center">48.97877</td>
+</tr>
+<tr class="even">
+<td align="center">33</td>
+<td align="center">34.553504</td>
+<td align="center">5.446496</td>
+<td align="center">11</td>
+<td align="center">188.19552</td>
+<td align="center">34.553504</td>
+<td align="center">37.61512</td>
+</tr>
+<tr class="odd">
+<td align="center">34</td>
+<td align="center">36.281179</td>
+<td align="center">3.718821</td>
+<td align="center">6</td>
+<td align="center">134.92321</td>
+<td align="center">36.281179</td>
+<td align="center">25.68328</td>
+</tr>
+<tr class="even">
+<td align="center">35</td>
+<td align="center">38.095238</td>
+<td align="center">1.904762</td>
+<td align="center">2</td>
+<td align="center">72.56236</td>
+<td align="center">38.095238</td>
+<td align="center">13.15485</td>
+</tr>
+<tr class="odd">
+<td align="center">36</td>
+<td align="center">40.000000</td>
+<td align="center">0.000000</td>
+<td align="center">0</td>
+<td align="center">0.00000</td>
+<td align="center">0.000000</td>
+<td align="center">0.00000</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># quantity=ggplot(df, aes(x = -Quantity, y = Price)) +
+#   geom_point()
+# price=ggplot(df, aes(x = Time, y = Price)) +
+#   geom_point()
+# reserves=ggplot(df, aes(x = -Time,  y= -Reserves)) +
+#   geom_point() + coord_flip()
+# time=ggplot(df, aes(x = Time, y = -Time)) +
+#   geom_point()
+# cowplot::plot_grid(quantity, price, reserves, time, nrow=2,ncol=2)</code></pre>
 <p><span style="color: blue;"> </span></p>
 </div>
 <div id="b." class="section level3">
 <h3>B.</h3>
 <p>Is the resource getting more scarce over time? What is your
 evidence?</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span style="color: blue;"><strong>The resource is getting more
+scarce over time. According to Hoteling, the marginal utility of
+quantity extracted should raise as a function of the discount factor and
+time. As the price increases by the discount factor net of costs, the
+quantity extracted decreases. As the quantity extracted decreases,
+scarcity increases and is reflected by Lambda in this case, which
+increases over time, reflecting the value of one additional unit of the
+resource in the next time period.</strong></span></p>
 <p><span style="color: blue;"> </span></p>
 </div>
 <div id="c." class="section level3">
@@ -482,7 +997,9 @@ evidence?</p>
 equilibrium, how much would the present discounted value of profits
 increase? Hint: you don’t need to resolve the model. An approximate
 answer is already in your table.</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span style="color: blue;"><strong>The present discounted value of
+profits should increase by the shadow price in time period 1, so by
+about $7.25.</strong></span></p>
 <p><span style="color: blue;"> </span></p>
 </div>
 </div>
@@ -503,7 +1020,58 @@ means that the demand curve rotates outward around a=40.</p>
 <h3>A.</h3>
 <p>What is the final year T for the three cases? Explain why they are
 different from question 1.</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span style="color: blue;"><strong>The final year T for each of the
+three cases are: case 1=38.28, case 2=41.56, and case 3=30.27. Case 1 is
+longer than the optimal time in question one because the price now must
+increase at the rate of discount net of the costs, so it will
+incentivize a longer time frame of extraction to reach the choke price
+and exhaust the resources. Case 2 is longer than the optimal time in
+question 1 because the initial reserves are higher. Once again, as price
+increases at the rate of discount, and the initial reserves are higher,
+a longer time frame would allow the price to increase in this manner and
+still allow for optimal resource exhaustion. Case 3 is shorter than the
+optimal time in question one because with the decrease in parameter b,
+if the price were to stay the same then the quantity extracted would
+increase, disallowing the price to increase at the rate of discount.
+Therefore, in this case the initial price would be larger so as to allow
+it to rise at the rate of discount, which increases the initial quantity
+harvested and lowers the time period of extraction.</strong></span></p>
+<pre class="r"><code>out_2a1=nloptr(x0=35,
+               eval_f=opt_fct,
+               opts=options,
+               lb=0,
+               eval_g_eq = constraint,
+               a=40,
+               b=1,
+               c=3.178025,
+               discount=0.05,
+               int_state=778.1259)
+cat(&quot;Case 1: The optimal time T is:&quot;, out_2a1$solution, &quot;Leading to expected PVNB of:&quot;, -out_2a1$objective, &quot;\n&quot;)</code></pre>
+<pre><code>## Case 1: The optimal time T is: 38.28125 Leading to expected PVNB of: 4487.078</code></pre>
+<pre class="r"><code>out_2a2=nloptr(x0=35,
+               eval_f=opt_fct,
+               opts=options,
+               lb=0,
+               eval_g_eq = constraint,
+               a=40,
+               b=1,
+               c=0,
+               discount=0.05,
+               int_state=948.2253)
+cat(&quot;Case 2: The optimal time T is:&quot;, out_2a2$solution, &quot;Leading to expected PVNB of:&quot;, -out_2a2$objective, &quot;\n&quot;)</code></pre>
+<pre><code>## Case 2: The optimal time T is: 41.5625 Leading to expected PVNB of: 5131.097</code></pre>
+<pre class="r"><code>out_2a3=nloptr(x0=25,
+               eval_f=opt_fct,
+               opts=options,
+               lb=0,
+               eval_g_eq = constraint,
+               a=40,
+               b=0.75194,
+               c=0,
+               discount=0.05,
+               int_state=778.1259)
+cat(&quot;Case 3: The optimal time T is:&quot;, out_2a3$solution, &quot;Leading to expected PVNB of:&quot;, -out_2a3$objective)</code></pre>
+<pre><code>## Case 3: The optimal time T is: 30.27344 Leading to expected PVNB of: 7201.606</code></pre>
 <p><span style="color: blue;"> </span></p>
 </div>
 <div id="b.-1" class="section level3">
@@ -511,7 +1079,1103 @@ different from question 1.</p>
 <p>How does <span class="math inline">\(\lambda_1\)</span> in the three
 cases compare to its value in question 1? What explains the
 differences?</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<p><span style="color: blue;"><strong>In case 1, Lambda is now the price
+of one additional unit of resource in the following time period net of
+the costs. So it would reflect the price at time 0 minus the cost,
+divided by rho, leading to a lower value than in question 1. In Case 2,
+costs are zero again so Lambda follows the previous price divided by
+rho, but in this case because the initial price is lower than in
+question 1, lambda is also lower. In case 3, because the initial price
+is higher due to the smaller b parameter, Lambda will reflect that
+higher initial price, leading to a higher value than in question
+1.</strong></span></p>
+<pre class="r"><code># This is correct for each case except for case 1. Not sure why it isn&#39;t depleting the resource to zero aside from it looks like it could use another year.
+df2b1 &lt;- table_function(out_2a1$solution, c=3.178025)
+knitr::kable(df2b1, align=&#39;c&#39;, label = &#39;Case 1&#39;)</code></pre>
+<table>
+<colgroup>
+<col width="8%" />
+<col width="15%" />
+<col width="15%" />
+<col width="14%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">Time</th>
+<th align="center">Price</th>
+<th align="center">Quantity</th>
+<th align="center">Reserves</th>
+<th align="center">Profits</th>
+<th align="center">Lambda</th>
+<th align="center">PV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">0</td>
+<td align="center">8.944544</td>
+<td align="center">31.055456</td>
+<td align="center">778</td>
+<td align="center">179.08187</td>
+<td align="center">0.000000</td>
+<td align="center">179.08187</td>
+</tr>
+<tr class="even">
+<td align="center">1</td>
+<td align="center">9.232870</td>
+<td align="center">30.767130</td>
+<td align="center">747</td>
+<td align="center">186.29020</td>
+<td align="center">6.054845</td>
+<td align="center">177.41924</td>
+</tr>
+<tr class="odd">
+<td align="center">2</td>
+<td align="center">9.535612</td>
+<td align="center">30.464388</td>
+<td align="center">716</td>
+<td align="center">193.68000</td>
+<td align="center">6.357587</td>
+<td align="center">175.67347</td>
+</tr>
+<tr class="even">
+<td align="center">3</td>
+<td align="center">9.853491</td>
+<td align="center">30.146509</td>
+<td align="center">686</td>
+<td align="center">201.24200</td>
+<td align="center">6.675466</td>
+<td align="center">173.84041</td>
+</tr>
+<tr class="odd">
+<td align="center">4</td>
+<td align="center">10.187265</td>
+<td align="center">29.812735</td>
+<td align="center">656</td>
+<td align="center">208.96461</td>
+<td align="center">7.009240</td>
+<td align="center">171.91570</td>
+</tr>
+<tr class="even">
+<td align="center">5</td>
+<td align="center">10.537727</td>
+<td align="center">29.462273</td>
+<td align="center">626</td>
+<td align="center">216.83354</td>
+<td align="center">7.359702</td>
+<td align="center">169.89475</td>
+</tr>
+<tr class="odd">
+<td align="center">6</td>
+<td align="center">10.905712</td>
+<td align="center">29.094288</td>
+<td align="center">596</td>
+<td align="center">224.83155</td>
+<td align="center">7.727687</td>
+<td align="center">167.77276</td>
+</tr>
+<tr class="even">
+<td align="center">7</td>
+<td align="center">11.292096</td>
+<td align="center">28.707904</td>
+<td align="center">567</td>
+<td align="center">232.93797</td>
+<td align="center">8.114071</td>
+<td align="center">165.54467</td>
+</tr>
+<tr class="odd">
+<td align="center">8</td>
+<td align="center">11.697800</td>
+<td align="center">28.302200</td>
+<td align="center">539</td>
+<td align="center">241.12837</td>
+<td align="center">8.519775</td>
+<td align="center">163.20517</td>
+</tr>
+<tr class="even">
+<td align="center">9</td>
+<td align="center">12.123788</td>
+<td align="center">27.876212</td>
+<td align="center">510</td>
+<td align="center">249.37399</td>
+<td align="center">8.945763</td>
+<td align="center">160.74870</td>
+</tr>
+<tr class="odd">
+<td align="center">10</td>
+<td align="center">12.571077</td>
+<td align="center">27.428923</td>
+<td align="center">482</td>
+<td align="center">257.64129</td>
+<td align="center">9.393052</td>
+<td align="center">158.16940</td>
+</tr>
+<tr class="even">
+<td align="center">11</td>
+<td align="center">13.040729</td>
+<td align="center">26.959271</td>
+<td align="center">455</td>
+<td align="center">265.89131</td>
+<td align="center">9.862704</td>
+<td align="center">155.46114</td>
+</tr>
+<tr class="odd">
+<td align="center">12</td>
+<td align="center">13.533864</td>
+<td align="center">26.466136</td>
+<td align="center">428</td>
+<td align="center">274.07905</td>
+<td align="center">10.355839</td>
+<td align="center">152.61747</td>
+</tr>
+<tr class="even">
+<td align="center">13</td>
+<td align="center">14.051656</td>
+<td align="center">25.948344</td>
+<td align="center">402</td>
+<td align="center">282.15272</td>
+<td align="center">10.873631</td>
+<td align="center">149.63161</td>
+</tr>
+<tr class="odd">
+<td align="center">14</td>
+<td align="center">14.595338</td>
+<td align="center">25.404662</td>
+<td align="center">376</td>
+<td align="center">290.05298</td>
+<td align="center">11.417313</td>
+<td align="center">146.49646</td>
+</tr>
+<tr class="even">
+<td align="center">15</td>
+<td align="center">15.166203</td>
+<td align="center">24.833796</td>
+<td align="center">350</td>
+<td align="center">297.71199</td>
+<td align="center">11.988179</td>
+<td align="center">143.20456</td>
+</tr>
+<tr class="odd">
+<td align="center">16</td>
+<td align="center">15.765612</td>
+<td align="center">24.234388</td>
+<td align="center">325</td>
+<td align="center">305.05247</td>
+<td align="center">12.587587</td>
+<td align="center">139.74805</td>
+</tr>
+<tr class="even">
+<td align="center">17</td>
+<td align="center">16.394992</td>
+<td align="center">23.605008</td>
+<td align="center">301</td>
+<td align="center">311.98661</td>
+<td align="center">13.216967</td>
+<td align="center">136.11872</td>
+</tr>
+<tr class="odd">
+<td align="center">18</td>
+<td align="center">17.055840</td>
+<td align="center">22.944160</td>
+<td align="center">278</td>
+<td align="center">318.41481</td>
+<td align="center">13.877815</td>
+<td align="center">132.30793</td>
+</tr>
+<tr class="even">
+<td align="center">19</td>
+<td align="center">17.749731</td>
+<td align="center">22.250269</td>
+<td align="center">255</td>
+<td align="center">324.22438</td>
+<td align="center">14.571706</td>
+<td align="center">128.30660</td>
+</tr>
+<tr class="odd">
+<td align="center">20</td>
+<td align="center">18.478316</td>
+<td align="center">21.521684</td>
+<td align="center">232</td>
+<td align="center">329.28803</td>
+<td align="center">15.300291</td>
+<td align="center">124.10519</td>
+</tr>
+<tr class="even">
+<td align="center">21</td>
+<td align="center">19.243331</td>
+<td align="center">20.756669</td>
+<td align="center">211</td>
+<td align="center">333.46224</td>
+<td align="center">16.065306</td>
+<td align="center">119.69372</td>
+</tr>
+<tr class="odd">
+<td align="center">22</td>
+<td align="center">20.046596</td>
+<td align="center">19.953404</td>
+<td align="center">190</td>
+<td align="center">336.58541</td>
+<td align="center">16.868571</td>
+<td align="center">115.06168</td>
+</tr>
+<tr class="even">
+<td align="center">23</td>
+<td align="center">20.890025</td>
+<td align="center">19.109975</td>
+<td align="center">170</td>
+<td align="center">338.47588</td>
+<td align="center">17.712000</td>
+<td align="center">110.19803</td>
+</tr>
+<tr class="odd">
+<td align="center">24</td>
+<td align="center">21.775624</td>
+<td align="center">18.224376</td>
+<td align="center">151</td>
+<td align="center">338.92964</td>
+<td align="center">18.597600</td>
+<td align="center">105.09120</td>
+</tr>
+<tr class="even">
+<td align="center">25</td>
+<td align="center">22.705504</td>
+<td align="center">17.294496</td>
+<td align="center">133</td>
+<td align="center">337.71791</td>
+<td align="center">19.527479</td>
+<td align="center">99.72903</td>
+</tr>
+<tr class="odd">
+<td align="center">26</td>
+<td align="center">23.681878</td>
+<td align="center">16.318122</td>
+<td align="center">116</td>
+<td align="center">334.58437</td>
+<td align="center">20.503854</td>
+<td align="center">94.09875</td>
+</tr>
+<tr class="even">
+<td align="center">27</td>
+<td align="center">24.707071</td>
+<td align="center">15.292929</td>
+<td align="center">99</td>
+<td align="center">329.24217</td>
+<td align="center">21.529046</td>
+<td align="center">88.18696</td>
+</tr>
+<tr class="odd">
+<td align="center">28</td>
+<td align="center">25.783524</td>
+<td align="center">14.216477</td>
+<td align="center">84</td>
+<td align="center">321.37054</td>
+<td align="center">22.605498</td>
+<td align="center">81.97958</td>
+</tr>
+<tr class="even">
+<td align="center">29</td>
+<td align="center">26.913798</td>
+<td align="center">13.086202</td>
+<td align="center">70</td>
+<td align="center">310.61112</td>
+<td align="center">23.735773</td>
+<td align="center">75.46183</td>
+</tr>
+<tr class="odd">
+<td align="center">30</td>
+<td align="center">28.100587</td>
+<td align="center">11.899413</td>
+<td align="center">57</td>
+<td align="center">296.56386</td>
+<td align="center">24.922562</td>
+<td align="center">68.61819</td>
+</tr>
+<tr class="even">
+<td align="center">31</td>
+<td align="center">29.346715</td>
+<td align="center">10.653285</td>
+<td align="center">45</td>
+<td align="center">278.78251</td>
+<td align="center">26.168690</td>
+<td align="center">61.43237</td>
+</tr>
+<tr class="odd">
+<td align="center">32</td>
+<td align="center">30.655150</td>
+<td align="center">9.344850</td>
+<td align="center">34</td>
+<td align="center">256.76962</td>
+<td align="center">27.477125</td>
+<td align="center">53.88726</td>
+</tr>
+<tr class="even">
+<td align="center">33</td>
+<td align="center">32.029006</td>
+<td align="center">7.970994</td>
+<td align="center">25</td>
+<td align="center">229.97100</td>
+<td align="center">28.850981</td>
+<td align="center">45.96489</td>
+</tr>
+<tr class="odd">
+<td align="center">34</td>
+<td align="center">33.471555</td>
+<td align="center">6.528445</td>
+<td align="center">17</td>
+<td align="center">197.76965</td>
+<td align="center">30.293530</td>
+<td align="center">37.64640</td>
+</tr>
+<tr class="even">
+<td align="center">35</td>
+<td align="center">34.986232</td>
+<td align="center">5.013769</td>
+<td align="center">10</td>
+<td align="center">159.47898</td>
+<td align="center">31.808207</td>
+<td align="center">28.91199</td>
+</tr>
+<tr class="odd">
+<td align="center">36</td>
+<td align="center">36.576642</td>
+<td align="center">3.423358</td>
+<td align="center">5</td>
+<td align="center">114.33543</td>
+<td align="center">33.398617</td>
+<td align="center">19.74086</td>
+</tr>
+<tr class="even">
+<td align="center">37</td>
+<td align="center">38.246573</td>
+<td align="center">1.753427</td>
+<td align="center">2</td>
+<td align="center">61.49015</td>
+<td align="center">35.068548</td>
+<td align="center">10.11117</td>
+</tr>
+<tr class="odd">
+<td align="center">38</td>
+<td align="center">40.000000</td>
+<td align="center">0.000000</td>
+<td align="center">0</td>
+<td align="center">0.00000</td>
+<td align="center">0.000000</td>
+<td align="center">0.00000</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>df2b2 &lt;- table_function(out_2a2$solution, int_state=948.2253)
+knitr::kable(df2b2, align=&#39;c&#39;)</code></pre>
+<table>
+<colgroup>
+<col width="8%" />
+<col width="15%" />
+<col width="15%" />
+<col width="14%" />
+<col width="15%" />
+<col width="15%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">Time</th>
+<th align="center">Price</th>
+<th align="center">Quantity</th>
+<th align="center">Reserves</th>
+<th align="center">Profits</th>
+<th align="center">Lambda</th>
+<th align="center">PV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">0</td>
+<td align="center">5.411264</td>
+<td align="center">34.588736</td>
+<td align="center">948</td>
+<td align="center">187.16878</td>
+<td align="center">0.000000</td>
+<td align="center">187.16878</td>
+</tr>
+<tr class="even">
+<td align="center">1</td>
+<td align="center">5.681827</td>
+<td align="center">34.318173</td>
+<td align="center">914</td>
+<td align="center">194.98993</td>
+<td align="center">5.681827</td>
+<td align="center">185.70470</td>
+</tr>
+<tr class="odd">
+<td align="center">2</td>
+<td align="center">5.965919</td>
+<td align="center">34.034081</td>
+<td align="center">879</td>
+<td align="center">203.04456</td>
+<td align="center">5.965919</td>
+<td align="center">184.16740</td>
+</tr>
+<tr class="even">
+<td align="center">3</td>
+<td align="center">6.264215</td>
+<td align="center">33.735785</td>
+<td align="center">845</td>
+<td align="center">211.32820</td>
+<td align="center">6.264215</td>
+<td align="center">182.55324</td>
+</tr>
+<tr class="odd">
+<td align="center">4</td>
+<td align="center">6.577425</td>
+<td align="center">33.422575</td>
+<td align="center">812</td>
+<td align="center">219.83449</td>
+<td align="center">6.577425</td>
+<td align="center">180.85838</td>
+</tr>
+<tr class="even">
+<td align="center">5</td>
+<td align="center">6.906297</td>
+<td align="center">33.093703</td>
+<td align="center">778</td>
+<td align="center">228.55493</td>
+<td align="center">6.906297</td>
+<td align="center">179.07877</td>
+</tr>
+<tr class="odd">
+<td align="center">6</td>
+<td align="center">7.251611</td>
+<td align="center">32.748389</td>
+<td align="center">745</td>
+<td align="center">237.47859</td>
+<td align="center">7.251611</td>
+<td align="center">177.21018</td>
+</tr>
+<tr class="even">
+<td align="center">7</td>
+<td align="center">7.614192</td>
+<td align="center">32.385808</td>
+<td align="center">712</td>
+<td align="center">246.59176</td>
+<td align="center">7.614192</td>
+<td align="center">175.24816</td>
+</tr>
+<tr class="odd">
+<td align="center">8</td>
+<td align="center">7.994902</td>
+<td align="center">32.005098</td>
+<td align="center">680</td>
+<td align="center">255.87761</td>
+<td align="center">7.994902</td>
+<td align="center">173.18804</td>
+</tr>
+<tr class="even">
+<td align="center">9</td>
+<td align="center">8.394647</td>
+<td align="center">31.605353</td>
+<td align="center">648</td>
+<td align="center">265.31577</td>
+<td align="center">8.394647</td>
+<td align="center">171.02491</td>
+</tr>
+<tr class="odd">
+<td align="center">10</td>
+<td align="center">8.814379</td>
+<td align="center">31.185621</td>
+<td align="center">616</td>
+<td align="center">274.88188</td>
+<td align="center">8.814379</td>
+<td align="center">168.75363</td>
+</tr>
+<tr class="even">
+<td align="center">11</td>
+<td align="center">9.255098</td>
+<td align="center">30.744902</td>
+<td align="center">585</td>
+<td align="center">284.54708</td>
+<td align="center">9.255098</td>
+<td align="center">166.36878</td>
+</tr>
+<tr class="odd">
+<td align="center">12</td>
+<td align="center">9.717853</td>
+<td align="center">30.282147</td>
+<td align="center">554</td>
+<td align="center">294.27745</td>
+<td align="center">9.717853</td>
+<td align="center">163.86470</td>
+</tr>
+<tr class="even">
+<td align="center">13</td>
+<td align="center">10.203746</td>
+<td align="center">29.796254</td>
+<td align="center">524</td>
+<td align="center">304.03340</td>
+<td align="center">10.203746</td>
+<td align="center">161.23540</td>
+</tr>
+<tr class="odd">
+<td align="center">14</td>
+<td align="center">10.713933</td>
+<td align="center">29.286067</td>
+<td align="center">494</td>
+<td align="center">313.76896</td>
+<td align="center">10.713933</td>
+<td align="center">158.47464</td>
+</tr>
+<tr class="even">
+<td align="center">15</td>
+<td align="center">11.249629</td>
+<td align="center">28.750371</td>
+<td align="center">465</td>
+<td align="center">323.43101</td>
+<td align="center">11.249629</td>
+<td align="center">155.57585</td>
+</tr>
+<tr class="odd">
+<td align="center">16</td>
+<td align="center">11.812111</td>
+<td align="center">28.187889</td>
+<td align="center">436</td>
+<td align="center">332.95847</td>
+<td align="center">11.812111</td>
+<td align="center">152.53211</td>
+</tr>
+<tr class="even">
+<td align="center">17</td>
+<td align="center">12.402716</td>
+<td align="center">27.597284</td>
+<td align="center">408</td>
+<td align="center">342.28128</td>
+<td align="center">12.402716</td>
+<td align="center">149.33619</td>
+</tr>
+<tr class="odd">
+<td align="center">18</td>
+<td align="center">13.022852</td>
+<td align="center">26.977148</td>
+<td align="center">380</td>
+<td align="center">351.31941</td>
+<td align="center">13.022852</td>
+<td align="center">145.98047</td>
+</tr>
+<tr class="even">
+<td align="center">19</td>
+<td align="center">13.673995</td>
+<td align="center">26.326005</td>
+<td align="center">353</td>
+<td align="center">359.98166</td>
+<td align="center">13.673995</td>
+<td align="center">142.45697</td>
+</tr>
+<tr class="odd">
+<td align="center">20</td>
+<td align="center">14.357695</td>
+<td align="center">25.642305</td>
+<td align="center">327</td>
+<td align="center">368.16439</td>
+<td align="center">14.357695</td>
+<td align="center">138.75729</td>
+</tr>
+<tr class="even">
+<td align="center">21</td>
+<td align="center">15.075579</td>
+<td align="center">24.924421</td>
+<td align="center">302</td>
+<td align="center">375.75008</td>
+<td align="center">15.075579</td>
+<td align="center">134.87262</td>
+</tr>
+<tr class="odd">
+<td align="center">22</td>
+<td align="center">15.829358</td>
+<td align="center">24.170642</td>
+<td align="center">277</td>
+<td align="center">382.60575</td>
+<td align="center">15.829358</td>
+<td align="center">130.79373</td>
+</tr>
+<tr class="even">
+<td align="center">23</td>
+<td align="center">16.620826</td>
+<td align="center">23.379174</td>
+<td align="center">252</td>
+<td align="center">388.58118</td>
+<td align="center">16.620826</td>
+<td align="center">126.51088</td>
+</tr>
+<tr class="odd">
+<td align="center">24</td>
+<td align="center">17.451867</td>
+<td align="center">22.548133</td>
+<td align="center">229</td>
+<td align="center">393.50702</td>
+<td align="center">17.451867</td>
+<td align="center">122.01390</td>
+</tr>
+<tr class="even">
+<td align="center">25</td>
+<td align="center">18.324461</td>
+<td align="center">21.675539</td>
+<td align="center">206</td>
+<td align="center">397.19257</td>
+<td align="center">18.324461</td>
+<td align="center">117.29207</td>
+</tr>
+<tr class="odd">
+<td align="center">26</td>
+<td align="center">19.240684</td>
+<td align="center">20.759316</td>
+<td align="center">185</td>
+<td align="center">399.42344</td>
+<td align="center">19.240684</td>
+<td align="center">112.33414</td>
+</tr>
+<tr class="even">
+<td align="center">27</td>
+<td align="center">20.202718</td>
+<td align="center">19.797282</td>
+<td align="center">164</td>
+<td align="center">399.95891</td>
+<td align="center">20.202718</td>
+<td align="center">107.12832</td>
+</tr>
+<tr class="odd">
+<td align="center">28</td>
+<td align="center">21.212854</td>
+<td align="center">18.787146</td>
+<td align="center">144</td>
+<td align="center">398.52899</td>
+<td align="center">21.212854</td>
+<td align="center">101.66221</td>
+</tr>
+<tr class="even">
+<td align="center">29</td>
+<td align="center">22.273497</td>
+<td align="center">17.726503</td>
+<td align="center">125</td>
+<td align="center">394.83121</td>
+<td align="center">22.273497</td>
+<td align="center">95.92279</td>
+</tr>
+<tr class="odd">
+<td align="center">30</td>
+<td align="center">23.387172</td>
+<td align="center">16.612828</td>
+<td align="center">108</td>
+<td align="center">388.52707</td>
+<td align="center">23.387172</td>
+<td align="center">89.89640</td>
+</tr>
+<tr class="even">
+<td align="center">31</td>
+<td align="center">24.556530</td>
+<td align="center">15.443470</td>
+<td align="center">91</td>
+<td align="center">379.23803</td>
+<td align="center">24.556530</td>
+<td align="center">83.56869</td>
+</tr>
+<tr class="odd">
+<td align="center">32</td>
+<td align="center">25.784357</td>
+<td align="center">14.215643</td>
+<td align="center">76</td>
+<td align="center">366.54122</td>
+<td align="center">25.784357</td>
+<td align="center">76.92460</td>
+</tr>
+<tr class="even">
+<td align="center">33</td>
+<td align="center">27.073574</td>
+<td align="center">12.926426</td>
+<td align="center">61</td>
+<td align="center">349.96454</td>
+<td align="center">27.073574</td>
+<td align="center">69.94830</td>
+</tr>
+<tr class="odd">
+<td align="center">34</td>
+<td align="center">28.427253</td>
+<td align="center">11.572747</td>
+<td align="center">49</td>
+<td align="center">328.98140</td>
+<td align="center">28.427253</td>
+<td align="center">62.62319</td>
+</tr>
+<tr class="even">
+<td align="center">35</td>
+<td align="center">29.848616</td>
+<td align="center">10.151384</td>
+<td align="center">37</td>
+<td align="center">303.00477</td>
+<td align="center">29.848616</td>
+<td align="center">54.93182</td>
+</tr>
+<tr class="odd">
+<td align="center">36</td>
+<td align="center">31.341047</td>
+<td align="center">8.658953</td>
+<td align="center">27</td>
+<td align="center">271.38066</td>
+<td align="center">31.341047</td>
+<td align="center">46.85588</td>
+</tr>
+<tr class="even">
+<td align="center">37</td>
+<td align="center">32.908099</td>
+<td align="center">7.091901</td>
+<td align="center">18</td>
+<td align="center">233.38098</td>
+<td align="center">32.908099</td>
+<td align="center">38.37615</td>
+</tr>
+<tr class="odd">
+<td align="center">38</td>
+<td align="center">34.553504</td>
+<td align="center">5.446496</td>
+<td align="center">11</td>
+<td align="center">188.19552</td>
+<td align="center">34.553504</td>
+<td align="center">29.47243</td>
+</tr>
+<tr class="even">
+<td align="center">39</td>
+<td align="center">36.281179</td>
+<td align="center">3.718821</td>
+<td align="center">6</td>
+<td align="center">134.92321</td>
+<td align="center">36.281179</td>
+<td align="center">20.12352</td>
+</tr>
+<tr class="odd">
+<td align="center">40</td>
+<td align="center">38.095238</td>
+<td align="center">1.904762</td>
+<td align="center">2</td>
+<td align="center">72.56236</td>
+<td align="center">38.095238</td>
+<td align="center">10.30717</td>
+</tr>
+<tr class="even">
+<td align="center">41</td>
+<td align="center">40.000000</td>
+<td align="center">0.000000</td>
+<td align="center">0</td>
+<td align="center">0.00000</td>
+<td align="center">0.000000</td>
+<td align="center">0.00000</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>df2b3 &lt;- table_function(out_2a3$solution, b=0.75194)
+knitr::kable(df2b3, align=&#39;c&#39;)</code></pre>
+<table>
+<colgroup>
+<col width="8%" />
+<col width="15%" />
+<col width="15%" />
+<col width="14%" />
+<col width="14%" />
+<col width="15%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">Time</th>
+<th align="center">Price</th>
+<th align="center">Quantity</th>
+<th align="center">Reserves</th>
+<th align="center">Profits</th>
+<th align="center">Lambda</th>
+<th align="center">PV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">0</td>
+<td align="center">9.255098</td>
+<td align="center">40.887441</td>
+<td align="center">778</td>
+<td align="center">378.4173</td>
+<td align="center">0.000000</td>
+<td align="center">378.41727</td>
+</tr>
+<tr class="even">
+<td align="center">1</td>
+<td align="center">9.717853</td>
+<td align="center">40.272026</td>
+<td align="center">737</td>
+<td align="center">391.3576</td>
+<td align="center">9.717853</td>
+<td align="center">372.72154</td>
+</tr>
+<tr class="odd">
+<td align="center">2</td>
+<td align="center">10.203746</td>
+<td align="center">39.625841</td>
+<td align="center">697</td>
+<td align="center">404.3320</td>
+<td align="center">10.203746</td>
+<td align="center">366.74104</td>
+</tr>
+<tr class="even">
+<td align="center">3</td>
+<td align="center">10.713933</td>
+<td align="center">38.947346</td>
+<td align="center">657</td>
+<td align="center">417.2792</td>
+<td align="center">10.713933</td>
+<td align="center">360.46150</td>
+</tr>
+<tr class="odd">
+<td align="center">4</td>
+<td align="center">11.249629</td>
+<td align="center">38.234927</td>
+<td align="center">618</td>
+<td align="center">430.1288</td>
+<td align="center">11.249629</td>
+<td align="center">353.86799</td>
+</tr>
+<tr class="even">
+<td align="center">5</td>
+<td align="center">11.812111</td>
+<td align="center">37.486886</td>
+<td align="center">580</td>
+<td align="center">442.7993</td>
+<td align="center">11.812111</td>
+<td align="center">346.94480</td>
+</tr>
+<tr class="odd">
+<td align="center">6</td>
+<td align="center">12.402716</td>
+<td align="center">36.701444</td>
+<td align="center">543</td>
+<td align="center">455.1976</td>
+<td align="center">12.402716</td>
+<td align="center">339.67546</td>
+</tr>
+<tr class="even">
+<td align="center">7</td>
+<td align="center">13.022852</td>
+<td align="center">35.876729</td>
+<td align="center">506</td>
+<td align="center">467.2173</td>
+<td align="center">13.022852</td>
+<td align="center">332.04264</td>
+</tr>
+<tr class="odd">
+<td align="center">8</td>
+<td align="center">13.673995</td>
+<td align="center">35.010779</td>
+<td align="center">470</td>
+<td align="center">478.7372</td>
+<td align="center">13.673995</td>
+<td align="center">324.02819</td>
+</tr>
+<tr class="even">
+<td align="center">9</td>
+<td align="center">14.357695</td>
+<td align="center">34.101531</td>
+<td align="center">435</td>
+<td align="center">489.6194</td>
+<td align="center">14.357695</td>
+<td align="center">315.61301</td>
+</tr>
+<tr class="odd">
+<td align="center">10</td>
+<td align="center">15.075579</td>
+<td align="center">33.146821</td>
+<td align="center">401</td>
+<td align="center">499.7075</td>
+<td align="center">15.075579</td>
+<td align="center">306.77708</td>
+</tr>
+<tr class="even">
+<td align="center">11</td>
+<td align="center">15.829358</td>
+<td align="center">32.144376</td>
+<td align="center">368</td>
+<td align="center">508.8248</td>
+<td align="center">15.829358</td>
+<td align="center">297.49934</td>
+</tr>
+<tr class="odd">
+<td align="center">12</td>
+<td align="center">16.620826</td>
+<td align="center">31.091808</td>
+<td align="center">336</td>
+<td align="center">516.7715</td>
+<td align="center">16.620826</td>
+<td align="center">287.75772</td>
+</tr>
+<tr class="even">
+<td align="center">13</td>
+<td align="center">17.451867</td>
+<td align="center">29.986611</td>
+<td align="center">305</td>
+<td align="center">523.3224</td>
+<td align="center">17.451867</td>
+<td align="center">277.52902</td>
+</tr>
+<tr class="odd">
+<td align="center">14</td>
+<td align="center">18.324461</td>
+<td align="center">28.826155</td>
+<td align="center">275</td>
+<td align="center">528.2238</td>
+<td align="center">18.324461</td>
+<td align="center">266.78889</td>
+</tr>
+<tr class="even">
+<td align="center">15</td>
+<td align="center">19.240684</td>
+<td align="center">27.607676</td>
+<td align="center">246</td>
+<td align="center">531.1906</td>
+<td align="center">19.240684</td>
+<td align="center">255.51175</td>
+</tr>
+<tr class="odd">
+<td align="center">16</td>
+<td align="center">20.202718</td>
+<td align="center">26.328273</td>
+<td align="center">218</td>
+<td align="center">531.9027</td>
+<td align="center">20.202718</td>
+<td align="center">243.67075</td>
+</tr>
+<tr class="even">
+<td align="center">17</td>
+<td align="center">21.212854</td>
+<td align="center">24.984900</td>
+<td align="center">192</td>
+<td align="center">530.0010</td>
+<td align="center">21.212854</td>
+<td align="center">231.23770</td>
+</tr>
+<tr class="odd">
+<td align="center">18</td>
+<td align="center">22.273497</td>
+<td align="center">23.574359</td>
+<td align="center">167</td>
+<td align="center">525.0834</td>
+<td align="center">22.273497</td>
+<td align="center">218.18300</td>
+</tr>
+<tr class="even">
+<td align="center">19</td>
+<td align="center">23.387172</td>
+<td align="center">22.093290</td>
+<td align="center">143</td>
+<td align="center">516.6996</td>
+<td align="center">23.387172</td>
+<td align="center">204.47556</td>
+</tr>
+<tr class="odd">
+<td align="center">20</td>
+<td align="center">24.556530</td>
+<td align="center">20.538168</td>
+<td align="center">121</td>
+<td align="center">504.3461</td>
+<td align="center">24.556530</td>
+<td align="center">190.08275</td>
+</tr>
+<tr class="even">
+<td align="center">21</td>
+<td align="center">25.784357</td>
+<td align="center">18.905289</td>
+<td align="center">101</td>
+<td align="center">487.4607</td>
+<td align="center">25.784357</td>
+<td align="center">174.97031</td>
+</tr>
+<tr class="odd">
+<td align="center">22</td>
+<td align="center">27.073574</td>
+<td align="center">17.190767</td>
+<td align="center">82</td>
+<td align="center">465.4155</td>
+<td align="center">27.073574</td>
+<td align="center">159.10223</td>
+</tr>
+<tr class="even">
+<td align="center">23</td>
+<td align="center">28.427253</td>
+<td align="center">15.390519</td>
+<td align="center">65</td>
+<td align="center">437.5102</td>
+<td align="center">28.427253</td>
+<td align="center">142.44076</td>
+</tr>
+<tr class="odd">
+<td align="center">24</td>
+<td align="center">29.848616</td>
+<td align="center">13.500258</td>
+<td align="center">49</td>
+<td align="center">402.9640</td>
+<td align="center">29.848616</td>
+<td align="center">124.94621</td>
+</tr>
+<tr class="even">
+<td align="center">25</td>
+<td align="center">31.341047</td>
+<td align="center">11.515484</td>
+<td align="center">36</td>
+<td align="center">360.9073</td>
+<td align="center">31.341047</td>
+<td align="center">106.57694</td>
+</tr>
+<tr class="odd">
+<td align="center">26</td>
+<td align="center">32.908099</td>
+<td align="center">9.431472</td>
+<td align="center">24</td>
+<td align="center">310.3718</td>
+<td align="center">32.908099</td>
+<td align="center">87.28920</td>
+</tr>
+<tr class="even">
+<td align="center">27</td>
+<td align="center">34.553504</td>
+<td align="center">7.243259</td>
+<td align="center">15</td>
+<td align="center">250.2800</td>
+<td align="center">34.553504</td>
+<td align="center">67.03707</td>
+</tr>
+<tr class="odd">
+<td align="center">28</td>
+<td align="center">36.281179</td>
+<td align="center">4.945635</td>
+<td align="center">7</td>
+<td align="center">179.4335</td>
+<td align="center">36.281179</td>
+<td align="center">45.77234</td>
+</tr>
+<tr class="even">
+<td align="center">29</td>
+<td align="center">38.095238</td>
+<td align="center">2.533130</td>
+<td align="center">3</td>
+<td align="center">96.5002</td>
+<td align="center">38.095238</td>
+<td align="center">23.44437</td>
+</tr>
+<tr class="odd">
+<td align="center">30</td>
+<td align="center">40.000000</td>
+<td align="center">0.000000</td>
+<td align="center">0</td>
+<td align="center">0.0000</td>
+<td align="center">0.000000</td>
+<td align="center">0.00000</td>
+</tr>
+</tbody>
+</table>
 <p><span style="color: blue;"> </span></p>
 </div>
 <div id="c.-1" class="section level3">
@@ -519,7 +2183,52 @@ differences?</p>
 <p>What happens to the present discounted value of profits (in other
 words, the value of the reserves <span class="math inline">\(R_0\)</span>) in the three cases compared to
 question 1? Explain the differences.</p>
-<p><span style="color: blue;"><strong>Solution</strong></span></p>
+<pre class="r"><code>final_df &lt;- data.frame(Scenario = c(&quot;Question 1&quot;, &quot;Case 1&quot;, &quot;Case 2&quot;, &quot;Case 3&quot;), Time = c(out_1a$solution, out_2a1$solution, out_2a2$solution, out_2a3$solution), PVNB = c(-out_1a$objective, -out_2a1$objective, -out_2a2$objective, -out_2a3$objective))
+knitr::kable(final_df, align=&#39;c&#39;)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="center">Scenario</th>
+<th align="center">Time</th>
+<th align="center">PVNB</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Question 1</td>
+<td align="center">36.64062</td>
+<td align="center">5373.968</td>
+</tr>
+<tr class="even">
+<td align="center">Case 1</td>
+<td align="center">38.28125</td>
+<td align="center">4487.078</td>
+</tr>
+<tr class="odd">
+<td align="center">Case 2</td>
+<td align="center">41.56250</td>
+<td align="center">5131.097</td>
+</tr>
+<tr class="even">
+<td align="center">Case 3</td>
+<td align="center">30.27344</td>
+<td align="center">7201.606</td>
+</tr>
+</tbody>
+</table>
+<p><span style="color: blue;"><strong>In case 1, the PVNB of reserves is
+lower compared to that of question one. This is due to the addition of
+costs, which reduce the benefits in each time period, leading to a
+longer time frame of extraction, allowing discounting to have a larger
+effect on present value of benefits. In case 2, the PVNB of reserves is
+higher than in question 1. This is because there are more reserves,
+implying that even though the longer time frame of extraction would
+further discount later benefits, the value of the reserves overall is
+higher, despite the per unit value of reserves being lower. In case 3,
+because the initial price is higher due to the decreased b parameter, it
+lessens the time frame of extraction and increases the initial
+quantities of extraction, pulling the benefits closer, and reducing the
+effect of discounting.</strong></span></p>
 <p><span style="color: blue;"> </span></p>
 </div>
 </div>

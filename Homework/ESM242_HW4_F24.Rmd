@@ -27,7 +27,7 @@ Suppose there is an exhaustible resource that is costlessly extracted.  The inve
 
 List the values of $t$, $p_t$, $q_t$, $R_t$, $\lambda_t$, and  $\pi_t$ in a table below. What should be the final (year T) values of $p_T$ and $R_T$? Why?  
 
-<span style="color: blue;">**The final values of  p_T and R_T should be 40 and 0 respectively. To maximize the present discounted profits from resource extraction in a competitive market, the firm would harvest all of the reserves available, leaving none left at the end. In addition, in competitive equilibrium for an exhaustible resource, the price of the good should increase at the rate of interest, or discount in this case until it reaches the choke point (40), where demand is zero.**</span>
+<span style="color: blue;">**The final values of  p_T and R_T should be 38.09 and 0 respectively. To maximize the present discounted profits from resource extraction in a competitive market, the firm would harvest all of the reserves available, leaving none left at the end. In addition, in competitive equilibrium for an exhaustible resource, the price of the good should increase at the rate of discount in this case until it reaches the choke price (40), where demand is zero.**</span>
 
 
 ```{r}
@@ -48,7 +48,7 @@ opt_fct <- function(choice, int_state, a, b, c, discount) {
 
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-(c*discount))/(1+discount) # Gives P from t+1 to 1
+    P[i-1]=(P[i]+(c*discount))/(1+discount) # Gives P from t+1 to 1
 
     Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
@@ -88,7 +88,7 @@ constraint <- function(choice, int_state, a, b, c, discount) {
   
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-(c*discount))/(1+discount) # Gives P from t+1 to 1
+    P[i-1]=(P[i]+(c*discount))/(1+discount) # Gives P from t+1 to 1
 
     Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
@@ -138,7 +138,7 @@ table_function <- function(choice, a=40, b=1, c=0, discount=0.05, int_state=778.
 
   for(i in (t+1):2) {
 
-    P[i-1]=(P[i]-(c*discount))/(1+discount) # Gives P from t+1 to 1
+    P[i-1]=(P[i]+(c*discount))/(1+discount) # Gives P from t+1 to 1
 
     Q[i-1]=(a-P[i-1])/b # Gives Q from t+1 to 1
 
@@ -148,7 +148,7 @@ table_function <- function(choice, a=40, b=1, c=0, discount=0.05, int_state=778.
   lambda[1]=0
   R[1]=int_state
   rho=1/(1+discount)
-  lambda[t+1]=(P[t]-c)/rho
+  lambda[t+1]=0
   
   for(i in 2:((t+1)-1)) {
     R[i]=R[i-1]-Q[i-1] # Gives R from 2 to t+1
@@ -169,15 +169,15 @@ options(scipen=999)
 df <- table_function(out_1a$solution)
 
 knitr::kable(df, align="c")
-quantity=ggplot(df, aes(x = -Quantity, y = Price)) +
-  geom_point()
-price=ggplot(df, aes(x = Time, y = Price)) +
-  geom_point()
-reserves=ggplot(df, aes(x = -Time,  y= -Reserves)) +
-  geom_point() + coord_flip()
-time=ggplot(df, aes(x = Time, y = -Time)) +
-  geom_point()
-cowplot::plot_grid(quantity, price, reserves, time, nrow=2,ncol=2)
+# quantity=ggplot(df, aes(x = -Quantity, y = Price)) +
+#   geom_point()
+# price=ggplot(df, aes(x = Time, y = Price)) +
+#   geom_point()
+# reserves=ggplot(df, aes(x = -Time,  y= -Reserves)) +
+#   geom_point() + coord_flip()
+# time=ggplot(df, aes(x = Time, y = -Time)) +
+#   geom_point()
+# cowplot::plot_grid(quantity, price, reserves, time, nrow=2,ncol=2)
 
 ```
 
@@ -190,7 +190,7 @@ cowplot::plot_grid(quantity, price, reserves, time, nrow=2,ncol=2)
 
 Is the resource getting more scarce over time? What is your evidence?
 
-<span style="color: blue;">**The resource is getting more scarce over time. As reserves diminish, quantity extracted lessens, and the price goes up. This is  indicated by lambda, which for a given time period reflects the value of one more unit of the resource in the next time period. In this case, Lambda increases over time, reflecting the increasing scarcity of the resource.**</span>
+<span style="color: blue;">**The resource is getting more scarce over time. According to Hoteling, the marginal utility of quantity extracted should raise as a function of the discount factor and time. As the price increases by the discount factor net of costs, the quantity extracted decreases. As the quantity extracted decreases, scarcity increases and is reflected by Lambda in this case, which increases over time, reflecting the value of one additional unit of the resource in the next time period.**</span>
 
 <span style="color: blue;">
 </span>
@@ -199,7 +199,7 @@ Is the resource getting more scarce over time? What is your evidence?
 
 If you were to increase the initial stock of reserve ($R_0$) by one unit and resolve the equilibrium, how much would the present discounted value of profits increase?  Hint: you don't need to resolve the model. An approximate answer is already in your table.
 
-<span style="color: blue;">**Solution**</span>
+<span style="color: blue;">**The present discounted value of profits should increase by the shadow price in time period 1, so by about $7.25.**</span>
 
 <span style="color: blue;">
 </span>
@@ -213,11 +213,10 @@ Consider three extensions of the model in question 1.  In case 1, there is a con
 
 What is the final year T for the three cases? Explain why they are different from question 1.
 
-<span style="color: blue;">**The final year T for each of the three cases are: case 1=34, case 2=40, and case 3=30.**</span>
+<span style="color: blue;">**The final year T for each of the three cases are: case 1=38.28, case 2=41.56, and case 3=30.27. Case 1 is longer than the optimal time in question one because the price now must increase at the rate of discount net of the costs, so it will incentivize a longer time frame of extraction to reach the choke price and exhaust the resources. Case 2 is longer than the optimal time in question 1 because the initial reserves are higher. Once again, as price increases at the rate of discount, and the initial reserves are higher, a longer time frame would allow the price to increase in this manner and still allow for optimal resource exhaustion. Case 3 is shorter than the optimal time in question one because with the decrease in parameter b, if the price were to stay the same then the quantity extracted would increase, disallowing the price to increase at the rate of discount. Therefore, in this case the initial price would be larger so as to allow it to rise at the rate of discount, which increases the initial quantity harvested and lowers the time period of extraction.**</span>
 
 ```{r}
-# Im not sure if these are correct... These solutions input into the table function give weird answers 
-out_2a1=nloptr(x0=40,
+out_2a1=nloptr(x0=35,
                eval_f=opt_fct,
                opts=options,
                lb=0,
@@ -227,8 +226,7 @@ out_2a1=nloptr(x0=40,
                c=3.178025,
                discount=0.05,
                int_state=778.1259)
-out_2a1$solution
--out_2a1$objective
+cat("Case 1: The optimal time T is:", out_2a1$solution, "Leading to expected PVNB of:", -out_2a1$objective, "\n")
 
 out_2a2=nloptr(x0=35,
                eval_f=opt_fct,
@@ -240,8 +238,7 @@ out_2a2=nloptr(x0=35,
                c=0,
                discount=0.05,
                int_state=948.2253)
-out_2a2$solution
--out_2a2$objective
+cat("Case 2: The optimal time T is:", out_2a2$solution, "Leading to expected PVNB of:", -out_2a2$objective, "\n")
 
 out_2a3=nloptr(x0=25,
                eval_f=opt_fct,
@@ -253,8 +250,7 @@ out_2a3=nloptr(x0=25,
                c=0,
                discount=0.05,
                int_state=778.1259)
-out_2a3$solution
--out_2a3$objective
+cat("Case 3: The optimal time T is:", out_2a3$solution, "Leading to expected PVNB of:", -out_2a3$objective)
 
 
 
@@ -270,12 +266,12 @@ out_2a3$solution
 
 How does $\lambda_1$ in the three cases compare to its value in question 1?  What explains the differences?
 
-<span style="color: blue;">**Solution**</span>
+<span style="color: blue;">**In case 1, Lambda is now the price of one additional unit of resource in the following time period net of the costs. So it would reflect the price at time 0 minus the cost, divided by rho, leading to a lower value than in question 1. In Case 2, costs are zero again so Lambda follows the previous price divided by rho, but in this case because the initial price is lower than in question 1, lambda is also lower. In case 3, because the initial price is higher due to the smaller b parameter, Lambda will reflect that higher initial price, leading to a higher value than in question 1.**</span>
 
 ```{r}
 # This is correct for each case except for case 1. Not sure why it isn't depleting the resource to zero aside from it looks like it could use another year.
 df2b1 <- table_function(out_2a1$solution, c=3.178025)
-knitr::kable(df2b1, align='c')
+knitr::kable(df2b1, align='c', label = 'Case 1')
 df2b2 <- table_function(out_2a2$solution, int_state=948.2253)
 knitr::kable(df2b2, align='c')
 df2b3 <- table_function(out_2a3$solution, b=0.75194)
@@ -286,11 +282,19 @@ knitr::kable(df2b3, align='c')
 </span>
 
 
+
+
 ### C.
 
 What happens to the present discounted value of profits (in other words, the value of the reserves $R_0$) in the three cases compared to question 1? Explain the differences.
 
-<span style="color: blue;">**Solution**</span>
+
+```{r}
+final_df <- data.frame(Scenario = c("Question 1", "Case 1", "Case 2", "Case 3"), Time = c(out_1a$solution, out_2a1$solution, out_2a2$solution, out_2a3$solution), PVNB = c(-out_1a$objective, -out_2a1$objective, -out_2a2$objective, -out_2a3$objective))
+knitr::kable(final_df, align='c')
+```
+
+<span style="color: blue;">**In case 1, the PVNB of reserves is lower compared to that of question one. This is due to the addition of costs, which reduce the benefits in each time period, leading to a longer time frame of extraction, allowing discounting to have a larger effect on present value of benefits. In case 2, the PVNB of reserves is higher than in question 1. This is because there are more reserves, implying that even though the longer time frame of extraction would further discount later benefits, the value of the reserves overall is higher, despite the per unit value of reserves being lower. In case 3, because the initial price is higher due to the decreased b parameter, it lessens the time frame of extraction and increases the initial quantities of extraction, pulling the benefits closer, and reducing the effect of discounting.**</span>
 
 <span style="color: blue;">
 </span>
